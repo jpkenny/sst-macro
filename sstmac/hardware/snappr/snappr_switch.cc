@@ -169,9 +169,6 @@ SnapprSwitch::SnapprSwitch(uint32_t id, SST::Params& params) :
   // Ensure topology is set
   Topology::staticTopology(params);
 
-  //vtk_ = registerStatistic<uint64_t,int,double,int>("traffic_intensity", getName());
-  //if (vtk_) vtk_->configure(my_addr_, top_);
-
   outports_.resize(top_->maxNumPorts());
   inports_.resize(top_->maxNumPorts());
   for (int i=0; i < top_->maxNumPorts(); ++i){
