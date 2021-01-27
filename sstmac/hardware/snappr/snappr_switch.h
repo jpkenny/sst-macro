@@ -53,6 +53,7 @@ Questions? Contact sst-macro-help@sandia.gov
 #include <sstmac/common/stats/stat_collector.h>
 #include <sstmac/common/stats/ftq_fwd.h>
 #include <queue>
+#include <unordered_set>
 
 namespace sstmac {
 namespace hw {
@@ -104,6 +105,8 @@ class SnapprSwitch :
 
   void deadlockCheck() override;
 
+  bool failLink(uint64_t linkID) override;
+
  private:
   friend struct SnapprInPort;
 
@@ -124,6 +127,7 @@ class SnapprSwitch :
   int num_vc_;
   int num_vl_;
 
+  std::unordered_set<int> failed_outports_;
 
 };
 

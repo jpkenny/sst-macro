@@ -64,6 +64,8 @@ Questions? Contact sst-macro-help@sandia.gov
 #include <sprockit/sim_parameters.h>
 #include <sprockit/util.h>
 #include <cinttypes>
+#include <stdlib.h>
+#include <unordered_set>
 
 #include <unusedvariablemacro.h>
 
@@ -120,6 +122,7 @@ Interconnect::Interconnect(SST::Params& params, SSTMAC_MAYBE_UNUSED EventManager
   num_switches_ = topology_->numSwitches();
   num_leaf_switches_ = topology_->numLeafSwitches();
   Runtime::setTopology(topology_);
+  n_random_link_failed_ = 0;
 
 #if !SSTMAC_INTEGRATED_SST_CORE
   components_.resize(topology_->numNodes() + topology_->numSwitches());
@@ -526,6 +529,10 @@ Interconnect::connectSwitches(uint64_t linkIdOffset, EventManager* mgr, SST::Par
   int my_thread = mgr->thread();
   uint64_t linkId = linkIdOffset;
 
+
+  if( switch_params.contains("n_random_link_failed"))
+    n_random_link_failed_ = switch_params.find<SST::UnitAlgebra>("n_random_link_failed").getRoundedValue();
+
   SST::Params port_params = switch_params.get_namespace("link");
   TimeDelta linkLatency(port_params.find<SST::UnitAlgebra>("latency").getValue().toDouble());
 
@@ -610,6 +617,26 @@ Interconnect::connectSwitches(uint64_t linkIdOffset, EventManager* mgr, SST::Par
       }
     }
   }
+
+  std::unordered_set<uint64_t> failed;
+  int n_failed = 0;
+  while( n_failed < n_random_link_failed_ ){
+    int rnum = rand() % (linkId + 1);
+    int n_succeed = 0;
+    for (int i=0; i < num_switches_; ++i){
+       SwitchId src(i);
+       if( switches_[src]->failLink(rnum) ){
+           ++n_succeed;
+         }
+      }
+    if (n_succeed > 1) {
+        spkt_abort_printf("Interconnect::connectSwitches: link failure n_succeed > 1");
+      }
+    else if (n_succeed == 1) {
+        ++n_failed;
+      }
+    }
+
   return linkId;
 }
 #endif

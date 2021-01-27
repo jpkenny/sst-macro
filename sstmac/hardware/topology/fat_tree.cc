@@ -65,6 +65,7 @@ RegisterKeywords(
 { "leaf_bandwidth_multiplier", "scale factor for leaf switch xbar bandwidth"},
 { "agg_bandwidth_multiplier", "scale factor for aggregation switch xbar bandwidth"},
 { "core_bandwidth_multiplier", "scale factor for core switch xbar bandwidth"},
+{ "num_failed_links", "number of failed links"},
 );
 
 namespace sstmac {

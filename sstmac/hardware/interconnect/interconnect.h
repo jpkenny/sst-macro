@@ -223,6 +223,8 @@ class Interconnect
 
   Partition* partition_;
   ParallelRuntime* rt_;
+
+  int n_random_link_failed_;
 #endif
 };
 

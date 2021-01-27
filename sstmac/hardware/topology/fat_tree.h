@@ -250,6 +250,8 @@ class FatTree :
   double vtk_radius_;
   double vtk_subtree_theta_;
 
+  int n_failed_links_;
+
   void checkInput() const;
 };
 

@@ -121,7 +121,7 @@ FatTreeRouter::route(Packet* pkt) {
                pkt->toString().c_str(), dst, int(hdr->edge_port));
   } else { // have to route
     int dst_tree = ft_->subtree(dst);
-    if (my_row_ == 0){ //leat switch - going up
+    if (my_row_ == 0){ //leaf switch - going up
       //definitely have to go up since we didn't eject
       hdr->edge_port = getUpPort();
       hdr->deadlock_vc = 0;
