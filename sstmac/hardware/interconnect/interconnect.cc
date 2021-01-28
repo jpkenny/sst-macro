@@ -626,6 +626,7 @@ Interconnect::connectSwitches(uint64_t linkIdOffset, EventManager* mgr, SST::Par
     for (int i=0; i < num_switches_; ++i){
        SwitchId src(i);
        if( switches_[src]->failLink(rnum) ){
+           std::cerr << "on switch " << src << "\n";
            ++n_succeed;
          }
       }
@@ -636,6 +637,7 @@ Interconnect::connectSwitches(uint64_t linkIdOffset, EventManager* mgr, SST::Par
         ++n_failed;
       }
     }
+  std::cerr << "failed " << n_failed << " links\n";
 
   return linkId;
 }

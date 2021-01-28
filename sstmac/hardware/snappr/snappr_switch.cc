@@ -319,10 +319,16 @@ SnapprSwitch::payloadHandler(int port)
 bool
 SnapprSwitch::failLink(uint64_t linkID)
 {
-  for( size_t i=0; i<outports_.size(); ++i) {
-    if( outports_[i]->link->id() == linkID ) {
-      failed_outports_.insert(i);
-      return true;
+  //std::cerr << "failing linkID " << linkID << "\n";
+  for (size_t i=0; i<outports_.size(); ++i){
+    if (outports_[i]->link) {
+      //std::cerr << "port link id: " << outports_[i]->link->id() << "\n";
+      if( outports_[i]->link->id() == linkID ) {
+        std::cerr << "failing linkID " << linkID << "\n";
+        std::cerr << "failing outport " << i << "\n";
+        failed_outports_.insert(i);
+        return true;
+        }
       }
     }
   return false;
