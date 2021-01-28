@@ -110,6 +110,18 @@ FatTreeRouter::FatTreeRouter(
 
 void
 FatTreeRouter::route(Packet* pkt) {
+  try_route(pkt);
+  header* hdr = pkt->rtrHeader<header>();
+  int first_port = hdr->edge_port;
+  while( failed_outports_.find( hdr->edge_port ) != failed_outports_.end() ) {
+    try_route(pkt);
+    if( hdr->edge_port == first_port )
+      spkt_abort_printf("FatTreeRouter::route: packet not routable due to failed links");
+    }
+}
+
+void
+FatTreeRouter::try_route(Packet* pkt) {
   header* hdr = pkt->rtrHeader<header>();
   SwitchId dst = pkt->toaddr() / ft_->concentration();
 

@@ -132,6 +132,8 @@ class Router : public sprockit::printable
    */
   uint32_t randomNumber(uint32_t max, uint32_t attempt, uint32_t seed) const;
 
+  virtual void failPort(int port);
+
  protected:
   Router(SST::Params& params, Topology* top, NetworkSwitch* sw);
 

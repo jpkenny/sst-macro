@@ -98,6 +98,11 @@ NetworkSwitch::failLink(uint64_t linkID)
   return false;
 }
 
+void
+NetworkSwitch::failPort(int port)
+{
+  spkt_abort_printf("unimplemented: NetworkSwitch::failPort");
+}
 
 }
 }

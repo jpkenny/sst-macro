@@ -269,16 +269,7 @@ SnapprSwitch::handlePayload(SnapprPacket* pkt, int inport)
   pkt->setInport(inport);
   pkt->saveInputVirtualLane();
   Router* rtr = routers_[pkt->qos()];
-
-  // problems if router is more complicated than fattree (vc, etc)
   rtr->route(pkt);
-  int first_port = pkt->nextPort();
-  while( failed_outports_.find( pkt->nextPort() ) != failed_outports_.end() ) {
-    rtr->route(pkt);
-    if( pkt->nextPort() == first_port )
-      spkt_abort_printf("SnapprSwitch::handlePayload: packet not routable due to failed links");
-    }
-
   int vl = rtr->vlOffset() + pkt->deadlockVC();
   pkt->setVirtualLane(vl);
 
@@ -326,12 +317,22 @@ SnapprSwitch::failLink(uint64_t linkID)
       if( outports_[i]->link->id() == linkID ) {
         std::cerr << "failing linkID " << linkID << "\n";
         std::cerr << "failing outport " << i << "\n";
-        failed_outports_.insert(i);
+        for (Router* rtr : routers_){
+          rtr->failPort(i);
+          }
         return true;
         }
       }
     }
   return false;
+}
+
+void
+SnapprSwitch::failPort(int port)
+{
+  for (Router* rtr : routers_){
+    rtr->failPort(port);
+    }
 }
 
 }

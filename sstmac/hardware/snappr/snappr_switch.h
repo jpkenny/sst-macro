@@ -107,6 +107,8 @@ class SnapprSwitch :
 
   bool failLink(uint64_t linkID) override;
 
+  void failPort(int port) override;
+
  private:
   friend struct SnapprInPort;
 
@@ -126,8 +128,6 @@ class SnapprSwitch :
 
   int num_vc_;
   int num_vl_;
-
-  std::unordered_set<int> failed_outports_;
 
 };
 
