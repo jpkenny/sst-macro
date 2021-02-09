@@ -532,8 +532,10 @@ Interconnect::connectSwitches(uint64_t linkIdOffset, EventManager* mgr, SST::Par
 
   if( switch_params.contains("n_random_link_failed"))
     n_random_link_failed_ = switch_params.find<SST::UnitAlgebra>("n_random_link_failed").getRoundedValue();
-  if( switch_params.contains("link_failure_filename") )
+  if( switch_params.contains("link_failure_filename") ) {
     failed_filename_ = switch_params.find<std::string>("link_failure_filename");
+    std::cerr << "will read failure file " << failed_filename_ << "\n";
+    }
 
   SST::Params port_params = switch_params.get_namespace("link");
   TimeDelta linkLatency(port_params.find<SST::UnitAlgebra>("latency").getValue().toDouble());
@@ -590,7 +592,7 @@ Interconnect::connectSwitches(uint64_t linkIdOffset, EventManager* mgr, SST::Par
       saved_conn.src_outport = conn.src_outport;
       saved_conn.dst = conn.dst;
       saved_conn.dst_inport = conn.dst_inport;
-      connection_map_[linkId] = saved_conn;
+      connection_map_[linkId-1] = saved_conn;
 
       if (dst_rank != my_rank && src_rank == my_rank){
         //we need to make the credit handler available on this end - its link is the next one
@@ -646,12 +648,35 @@ Interconnect::connectSwitches(uint64_t linkIdOffset, EventManager* mgr, SST::Par
       }
     }
 
-  if( n_random_link_failed_ > 0 && failed_filename_.size() > 0) {
+  if( n_random_link_failed_ == 0 && failed_filename_.size() > 0) {
     std::ifstream in(failed_filename_);
-    int switchid, portid;
-    while(in >> switchid) {
+    unsigned int switchid, partner_switchid;
+    uint64_t failed_link, incoming_link;
+    int portid;
+    while( in >> switchid ) {
       in >> portid;
-      switches_[switchid]->failPort(portid);
+      std::cerr << "failure file: switch " << switchid << " port " << portid << "\n";
+      for( auto it: connection_map_ ) {
+        if( it.second.src == switchid && it.second.src_outport == portid ) {
+          failed_link = it.first;
+          std::cerr << "failing port " << portid << " on switch " << switchid << "\n";
+          break;
+          }
+        }
+      for( auto it: connection_map_ ) {
+        if( it.second.dst == switchid && it.second.dst_inport == portid ) {
+          partner_switchid = it.second.src;
+          incoming_link = it.first;
+          std::cerr << "failing corresponding port " << it.second.src_outport << " on switch " << partner_switchid << "\n";
+          break;
+          }
+        }
+      if( switches_[switchid]->failLink(failed_link) )
+        std::cerr << "link failed\n";
+      else sprockit::abort("could not fail link specified in file");
+      if( switches_[partner_switchid]->failLink(incoming_link) )
+        std::cerr << "corresponding link failed\n";
+      else sprockit::abort("could not fail corresponding link from file");
       }
     }
 

@@ -315,8 +315,8 @@ SnapprSwitch::failLink(uint64_t linkID)
     if (outports_[i]->link) {
       //std::cerr << "port link id: " << outports_[i]->link->id() << "\n";
       if( outports_[i]->link->id() == linkID ) {
-        std::cerr << "failing linkID " << linkID << "\n";
-        std::cerr << "failing outport " << i << "\n";
+        //std::cerr << "failing linkID " << linkID << "\n";
+        //std::cerr << "failing outport " << i << "\n";
         for (Router* rtr : routers_){
           rtr->failPort(i);
           }
@@ -324,6 +324,7 @@ SnapprSwitch::failLink(uint64_t linkID)
         }
       }
     }
+  //std::cerr << "didn't fail anything\n";
   return false;
 }
 
