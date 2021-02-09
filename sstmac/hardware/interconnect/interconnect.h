@@ -51,7 +51,7 @@ Questions? Contact sst-macro-help@sandia.gov
 
 #include <sstmac/hardware/common/connection.h>
 #include <sstmac/hardware/node/node_fwd.h>
-#include <sstmac/hardware/topology/topology_fwd.h>
+#include <sstmac/hardware/topology/topology.h>
 #include <sstmac/hardware/nic/nic_fwd.h>
 #include <sstmac/hardware/switch/network_switch_fwd.h>
 
@@ -107,6 +107,8 @@ class Interconnect
 
  private:
   static Interconnect* static_interconnect_;
+
+  std::map<uint64_t,sstmac::hw::Topology::Connection> connection_map_;
 
   Interconnect(){}
 

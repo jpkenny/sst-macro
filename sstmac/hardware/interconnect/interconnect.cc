@@ -65,7 +65,7 @@ Questions? Contact sst-macro-help@sandia.gov
 #include <sprockit/util.h>
 #include <cinttypes>
 #include <stdlib.h>
-#include <unordered_set>
+#include <sstream>
 
 #include <unusedvariablemacro.h>
 
@@ -528,10 +528,12 @@ Interconnect::connectSwitches(uint64_t linkIdOffset, EventManager* mgr, SST::Par
   int my_rank = rt_->me();
   int my_thread = mgr->thread();
   uint64_t linkId = linkIdOffset;
-
+  std::string failed_filename_;
 
   if( switch_params.contains("n_random_link_failed"))
     n_random_link_failed_ = switch_params.find<SST::UnitAlgebra>("n_random_link_failed").getRoundedValue();
+  if( switch_params.contains("link_failure_filename") )
+    failed_filename_ = switch_params.find<std::string>("link_failure_filename");
 
   SST::Params port_params = switch_params.get_namespace("link");
   TimeDelta linkLatency(port_params.find<SST::UnitAlgebra>("latency").getValue().toDouble());
@@ -583,6 +585,13 @@ Interconnect::connectSwitches(uint64_t linkIdOffset, EventManager* mgr, SST::Par
         linkId++; //increment for consistency with other ranks
       }
 
+      Topology::Connection saved_conn;
+      saved_conn.src = conn.src;
+      saved_conn.src_outport = conn.src_outport;
+      saved_conn.dst = conn.dst;
+      saved_conn.dst_inport = conn.dst_inport;
+      connection_map_[linkId] = saved_conn;
+
       if (dst_rank != my_rank && src_rank == my_rank){
         //we need to make the credit handler available on this end - its link is the next one
         auto* credit_handler = switches_[conn.src]->creditHandler(conn.src_outport);
@@ -618,15 +627,14 @@ Interconnect::connectSwitches(uint64_t linkIdOffset, EventManager* mgr, SST::Par
     }
   }
 
-  std::unordered_set<uint64_t> failed;
   int n_failed = 0;
   while( n_failed < n_random_link_failed_ ){
-    int rnum = rand() % (linkId + 1);
+    int rnum = rand() % (linkId - linkIdOffset + 1);
+    rnum += linkIdOffset;
     int n_succeed = 0;
     for (int i=0; i < num_switches_; ++i){
        SwitchId src(i);
        if( switches_[src]->failLink(rnum) ){
-           std::cerr << "on switch " << src << "\n";
            ++n_succeed;
          }
       }
@@ -637,7 +645,15 @@ Interconnect::connectSwitches(uint64_t linkIdOffset, EventManager* mgr, SST::Par
         ++n_failed;
       }
     }
-  std::cerr << "failed " << n_failed << " links\n";
+
+  if( n_random_link_failed_ > 0 && failed_filename_.size() > 0) {
+    std::ifstream in(failed_filename_);
+    int switchid, portid;
+    while(in >> switchid) {
+      in >> portid;
+      switches_[switchid]->failPort(portid);
+      }
+    }
 
   return linkId;
 }
