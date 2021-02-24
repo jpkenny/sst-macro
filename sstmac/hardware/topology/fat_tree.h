@@ -104,7 +104,7 @@ class FatTree :
   }
 
   /**
-   * Unlike other topologies, we all fat-tree to leave empty slots
+   * Unlike other topologies, we allow fat-tree to leave empty slots
    */
   NodeId numNodes() const override {
     return max_nodes_;
@@ -249,8 +249,6 @@ class FatTree :
   int num_core_switches_;
   double vtk_radius_;
   double vtk_subtree_theta_;
-
-  int n_failed_links_;
 
   void checkInput() const;
 };

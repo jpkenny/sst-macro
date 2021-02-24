@@ -43,6 +43,7 @@ Questions? Contact sst-macro-help@sandia.gov
 */
 
 #include <sstmac/hardware/router/router.h>
+#include <sstmac/hardware/router/dragonfly_routing.h>
 #include <sstmac/hardware/switch/network_switch.h>
 #include <sstmac/hardware/topology/dragonfly.h>
 #include <sstmac/hardware/topology/dragonfly_plus.h>
@@ -53,7 +54,7 @@ Questions? Contact sst-macro-help@sandia.gov
 #include <sprockit/sim_parameters.h>
 #include <cmath>
 
-#define ftree_rter_debug(...) \
+#define dfly_rter_debug(...) \
   rter_debug("fat tree: %s", sprockit::sprintf(__VA_ARGS__).c_str())
 
 RegisterKeywords(
@@ -63,22 +64,8 @@ RegisterKeywords(
 namespace sstmac {
 namespace hw {
 
-struct DragonflyMinimalRouter : public Router {
-  SST_ELI_REGISTER_DERIVED(
-    Router,
-    DragonflyMinimalRouter,
-    "macro",
-    "dragonfly_minimal",
-    SST_ELI_ELEMENT_VERSION(1,0,0),
-    "router implementing minimal dragonfly")
 
-  struct header : public Packet::Header {
-    uint8_t num_group_hops : 2;
-    uint8_t num_hops : 4;
-  };
-
- public:
-  DragonflyMinimalRouter(SST::Params& params, Topology* top,
+  DragonflyMinimalRouter::DragonflyMinimalRouter(SST::Params& params, Topology* top,
                            NetworkSwitch* netsw) :
     Router(params, top, netsw)
   {
@@ -132,15 +119,7 @@ struct DragonflyMinimalRouter : public Router {
 
   }
 
-  int numVC() const override {
-    return 2;
-  }
-
-  std::string toString() const override {
-    return "dragonfly minimal router";
-  }
-
-  void route(Packet *pkt) override
+  void DragonflyMinimalRouter::route(Packet *pkt)
   {
     auto* hdr = pkt->rtrHeader<header>();
     SwitchId ejaddr = pkt->toaddr() / dfly_->concentration();
@@ -154,7 +133,17 @@ struct DragonflyMinimalRouter : public Router {
     routeToSwitch(pkt, ejaddr);
   }
 
-  void routeToSwitch(Packet* pkt, SwitchId ej_addr)
+  void DragonflyMinimalRouter::try_outport(SwitchId ej_addr, int dstG, int& outport) {
+    if (static_route_){
+      int rotater = ej_addr % group_ports_[dstG].size();
+      outport = group_ports_[dstG][rotater];
+    } else {
+      outport = group_ports_[dstG][group_port_rotaters_[dstG]];
+      group_port_rotaters_[dstG] = (group_port_rotaters_[dstG] + 1) % group_ports_[dstG].size();
+    }
+  }
+
+  void DragonflyMinimalRouter::routeToSwitch(Packet* pkt, SwitchId ej_addr)
   {
     auto hdr = pkt->rtrHeader<header>();
     hdr->deadlock_vc = hdr->num_group_hops;
@@ -164,12 +153,12 @@ struct DragonflyMinimalRouter : public Router {
       hdr->edge_port = dstA;
     } else {
       int dst_port;
-      if (static_route_){
-        int rotater = ej_addr % group_ports_[dstG].size();
-        dst_port = group_ports_[dstG][rotater];
-      } else {
-        dst_port = group_ports_[dstG][group_port_rotaters_[dstG]];
-        group_port_rotaters_[dstG] = (group_port_rotaters_[dstG] + 1) % group_ports_[dstG].size();
+      try_outport(ej_addr, dstG, dst_port);
+      int first_port = dst_port;
+      while( failed_outports_.find( dst_port ) != failed_outports_.end() ) {
+        try_outport(ej_addr, dstG, dst_port);
+        if( dst_port == first_port )
+          spkt_abort_printf("DragonflyMinimalRouter::route: packet not routable due to failed links");
       }
       if (dst_port >= dfly_->a()){
         hdr->num_group_hops++;
@@ -182,38 +171,7 @@ struct DragonflyMinimalRouter : public Router {
     }
   }
 
- protected:
-  Dragonfly* dfly_;
-
-  std::vector<std::vector<int>> group_ports_;
-  std::vector<int> group_port_rotaters_;
-
-  bool static_route_;
-
-  int my_g_;
-  int my_a_;
-};
-
-class DragonflyValiantRouter : public DragonflyMinimalRouter {
- public:
-  SST_ELI_REGISTER_DERIVED(
-    Router,
-    DragonflyValiantRouter,
-    "macro",
-    "dragonfly_valiant",
-    SST_ELI_ELEMENT_VERSION(1,0,0),
-    "router implementing valiant dragonfly")
-
-  static const char initial_stage = 0;
-  static const char valiant_stage = 1;
-  static const char final_stage = 2;
-
-  struct header : public DragonflyMinimalRouter::header {
-    uint8_t stage_number : 3;
-    uint32_t dest_switch : 24;
-  };
-
-  DragonflyValiantRouter(SST::Params& params, Topology *top,
+  DragonflyValiantRouter::DragonflyValiantRouter(SST::Params& params, Topology *top,
                          NetworkSwitch *netsw)
     : DragonflyMinimalRouter(params, top, netsw)
   {
@@ -265,15 +223,7 @@ class DragonflyValiantRouter : public DragonflyMinimalRouter {
     }
   }
 
-  std::string toString() const override {
-    return "dragonfly valiant";
-  }
-
-  int numVC() const override {
-    return 6;
-  }
-
-  void checkValiantInterGroup(Packet* pkt, int dst_g)
+  void DragonflyValiantRouter::checkValiantInterGroup(Packet* pkt, int dst_g)
   {
     uint32_t seed = netsw_->now().time.ticks();
     uint32_t attempt = 0;
@@ -289,7 +239,7 @@ class DragonflyValiantRouter : public DragonflyMinimalRouter {
     hdr->stage_number = valiant_stage;
   }
 
-  void checkValiantIntraGroup(Packet* pkt, int dst_a){
+  void DragonflyValiantRouter::checkValiantIntraGroup(Packet* pkt, int dst_a){
     uint32_t seed = netsw_->now().time.ticks();
     uint32_t attempt = 0;
     int new_a = dst_a;
@@ -303,7 +253,7 @@ class DragonflyValiantRouter : public DragonflyMinimalRouter {
     hdr->stage_number = valiant_stage;
   }
 
-  void route(Packet *pkt) override {
+  void DragonflyValiantRouter::route(Packet *pkt) {
     auto hdr = pkt->rtrHeader<header>();
     SwitchId ej_addr = pkt->toaddr() / dfly_->concentration();
     if (ej_addr == my_addr_){
@@ -343,41 +293,7 @@ class DragonflyValiantRouter : public DragonflyMinimalRouter {
     ++hdr->num_hops;
   }
 
- protected:
-  std::vector<int> gateway_rotater_; //for non-minimal
-  std::vector<std::vector<std::pair<int,int>>> group_gateways_;
-};
-
-class DragonflyUGALRouter : public DragonflyValiantRouter {
-
- public:
-  static const char minimal_only_stage = final_stage + 1;
-
-  SST_ELI_REGISTER_DERIVED(
-    Router,
-    DragonflyUGALRouter,
-    "macro",
-    "dragonfly_ugal",
-    SST_ELI_ELEMENT_VERSION(1,0,0),
-    "router implementing UGAL dragonfly")
-
-  DragonflyUGALRouter(SST::Params& params, Topology *top,
-                      NetworkSwitch *netsw)
-    : DragonflyValiantRouter(params, top, netsw)
-  {
-    val_threshold_ = params.find<int>("val_threshold", 0);
-    vl_queues_ = params.find<bool>("vl_queues", false);
-  }
-
-  std::string toString() const override {
-    return "dragonfly ugal router";
-  }
-
-  int numVC() const override {
-    return 6;
-  }
-
-  void checkUGALInterGroup(Packet* pkt, int dst_a, int dst_g, char minimal_stage)
+  void DragonflyUGALRouter::checkUGALInterGroup(Packet* pkt, int dst_a, int dst_g, char minimal_stage)
   {
     uint32_t seed = netsw_->now().time.ticks();
     uint32_t attempt = 0;
@@ -415,7 +331,7 @@ class DragonflyUGALRouter : public DragonflyValiantRouter {
     group_port_rotaters_[dst_g] = (group_port_rotaters_[dst_g] + 1) % group_ports_[dst_g].size();
   }
 
-  void checkUGALIntraGroup(Packet* pkt, int dst_a, char minimal_stage){
+  void DragonflyUGALRouter::checkUGALIntraGroup(Packet* pkt, int dst_a, char minimal_stage){
     uint32_t seed = netsw_->now().time.ticks();
     uint32_t attempt = 0;
     int new_a = dst_a;
@@ -443,7 +359,7 @@ class DragonflyUGALRouter : public DragonflyValiantRouter {
     }
   }
 
-  void route(Packet *pkt) override {
+  void DragonflyUGALRouter::route(Packet *pkt) {
     auto hdr = pkt->rtrHeader<header>();
     SwitchId ej_addr = pkt->toaddr() / dfly_->concentration();
     if (ej_addr == my_addr_){
@@ -498,33 +414,7 @@ class DragonflyUGALRouter : public DragonflyValiantRouter {
     ++hdr->num_hops;
   }
 
- protected:
-  int val_threshold_;
-  bool vl_queues_;
-
-};
-
-class DragonflyPARRouter : public DragonflyUGALRouter {
- public:
-  SST_ELI_REGISTER_DERIVED(
-    Router,
-    DragonflyPARRouter,
-    "macro",
-    "dragonfly_par",
-    SST_ELI_ELEMENT_VERSION(1,0,0),
-    "router implementing PAR dragonfly")
-
-  std::string toString() const override {
-    return "dragonfly PAR router";
-  }
-
-  DragonflyPARRouter(SST::Params& params, Topology *top,
-                       NetworkSwitch *netsw)
-    : DragonflyUGALRouter(params, top, netsw)
-  {
-  }
-
-  void route(Packet *pkt) override {
+  void DragonflyPARRouter::route(Packet *pkt) {
     auto hdr = pkt->rtrHeader<header>();
     SwitchId ej_addr = pkt->toaddr() / dfly_->concentration();
     if (ej_addr == my_addr_){
@@ -564,46 +454,7 @@ class DragonflyPARRouter : public DragonflyUGALRouter {
     ++hdr->num_hops;
   }
 
-};
-
-struct DragonflyScatterRouter : public Router {
-  SST_ELI_REGISTER_DERIVED(
-    Router,
-    DragonflyScatterRouter,
-    "macro",
-    "dragonfly_scatter",
-    SST_ELI_ELEMENT_VERSION(1,0,0),
-    "router implementing dragonfly that obliviously scatters traffic")
-
-  struct header : public Packet::Header {
-    uint8_t num_group_hops : 2;
-    uint8_t num_hops : 4;
-  };
-
-  static const int max_hops = 3;
-
-  struct destination {
-    std::set<int>::iterator rotater;
-    std::set<int> ports;
-
-    int nextPort(){
-      int port = *rotater; //ports[rotater];
-      ++rotater;
-      if (rotater == ports.end()){
-        rotater = ports.begin();
-      }
-      return port;
-    }
-
-    void init(){
-      rotater = ports.begin();
-    }
-
-    destination(){}
-  };
-
- public:
-  DragonflyScatterRouter(SST::Params& params, Topology* top,
+  DragonflyScatterRouter::DragonflyScatterRouter(SST::Params& params, Topology* top,
                            NetworkSwitch* netsw) :
     Router(params, top, netsw)
   {
@@ -633,7 +484,7 @@ struct DragonflyScatterRouter : public Router {
     }
   }
 
-  void followPathHelper(int sid, int num_hops, int num_group_hops, int port){
+  void DragonflyScatterRouter::followPathHelper(int sid, int num_hops, int num_group_hops, int port){
     int g = dfly_->computeG(sid);
     if (port < dfly_->a() || g != my_g_){
       //don't follow inter-grp ports for intra-grp sends
@@ -648,7 +499,7 @@ struct DragonflyScatterRouter : public Router {
     followPath(sid, num_hops, num_group_hops, port);
   }
 
-  void followPath(int sid, int num_hops, int num_group_hops, int port = -1){
+  void DragonflyScatterRouter::followPath(int sid, int num_hops, int num_group_hops, int port) {
     if (num_hops < 3){
       int a = dfly_->computeA(sid);
       int g = dfly_->computeG(sid);
@@ -671,15 +522,7 @@ struct DragonflyScatterRouter : public Router {
     }
   }
 
-  int numVC() const override {
-    return 3;
-  }
-
-  std::string toString() const override {
-    return "dragonfly scatter router";
-  }
-
-  void route(Packet *pkt) override
+  void DragonflyScatterRouter::route(Packet *pkt)
   {
     auto* hdr = pkt->rtrHeader<header>();
     SwitchId ejaddr = pkt->toaddr() / dfly_->concentration();
@@ -720,26 +563,7 @@ struct DragonflyScatterRouter : public Router {
     hdr->num_hops++;
   }
 
- protected:
-  Dragonfly* dfly_;
-
-  std::vector<destination> destination_table_[max_hops+1];
-
-  int my_g_;
-  int my_a_;
-};
-
-struct DragonflyRotateRouter : public DragonflyMinimalRouter {
-  SST_ELI_REGISTER_DERIVED(
-    Router,
-    DragonflyRotateRouter,
-    "macro",
-    "dragonfly_rotate",
-    SST_ELI_ELEMENT_VERSION(1,0,0),
-    "router implementing dragonfly that obliviously scatters traffic")
-
- public:
-  DragonflyRotateRouter(SST::Params& params, Topology* top,
+  DragonflyRotateRouter::DragonflyRotateRouter(SST::Params& params, Topology* top,
                         NetworkSwitch* netsw) :
     DragonflyMinimalRouter(params, top, netsw)
   {
@@ -758,15 +582,7 @@ struct DragonflyRotateRouter : public DragonflyMinimalRouter {
     port_rotater_ = valid_ports_.begin();
   }
 
-  int numVC() const override {
-    return 4;
-  }
-
-  std::string toString() const override {
-    return "dragonfly rotate router";
-  }
-
-  void route(Packet *pkt) override
+  void DragonflyRotateRouter::route(Packet *pkt)
   {
     auto* hdr = pkt->rtrHeader<header>();
     SwitchId ejaddr = pkt->toaddr() / dfly_->concentration();
@@ -803,11 +619,6 @@ struct DragonflyRotateRouter : public DragonflyMinimalRouter {
     hdr->deadlock_vc = hdr->num_hops;
     hdr->num_hops++;
   }
-
- private:
-  std::set<int>::iterator port_rotater_;
-  std::set<int> valid_ports_;
-};
 
 }
 }

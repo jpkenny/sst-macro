@@ -79,6 +79,13 @@ class FatTreeRouter : public Router
 
   void route(Packet* pkt) override;
 
+  int numVC() const override { return 1; }
+
+  void failPort(int port) override
+  {
+    failed_outports_.insert(port);
+  }
+
   void rotateUpNext();
 
   void rotateSubtreeNext(int tree);
@@ -94,13 +101,6 @@ class FatTreeRouter : public Router
    * @return
    */
   int getDownPort(int path);
-
-  int numVC() const override { return 1; }
-
-  void failPort(int port)
-  {
-    failed_outports_.insert(port);
-  }
 
  private:
 

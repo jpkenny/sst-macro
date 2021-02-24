@@ -118,6 +118,7 @@ nobase_library_include_HEADERS += \
   topology/traffic/traffic.h \
   router/router.h \
   router/router_fwd.h \
+  router/dragonfly_routing.h \
   router/fat_tree_router.h 
 
 libsstmac_hw_la_SOURCES +=  \
@@ -171,7 +172,6 @@ libsstmac_hw_la_SOURCES +=  \
   router/table_routing.cc \
   router/fat_tree_router.cc \
   router/cascade_routing.cc \
-  router/dragonfly_routing.cc \
   router/dragonfly_routing.cc \
   router/dragonfly_plus_routing.cc \
   router/hypercube_routing.cc \
