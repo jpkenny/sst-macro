@@ -318,6 +318,7 @@ SnapprSwitch::failLink(uint64_t linkID)
         //std::cerr << "failing linkID " << linkID << "\n";
         //std::cerr << "failing outport " << i << "\n";
         for (Router* rtr : routers_){
+          std::cerr << "failing port on a " << rtr->toString() << std::endl;
           rtr->failPort(i);
           }
         return true;
@@ -332,6 +333,7 @@ void
 SnapprSwitch::failPort(int port)
 {
   for (Router* rtr : routers_){
+    std::cerr << "failing port on a " << rtr->toString() << std::endl;
     rtr->failPort(port);
     }
 }

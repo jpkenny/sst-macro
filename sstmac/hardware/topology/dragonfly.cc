@@ -456,7 +456,6 @@ class CirculantGroupWiring : public InterGroupWiring
    * @param a The src router index within the group
    * @param g The src router group
    * @param connected [in-out] The routers (switch id) for each inter-group interconnection
-   * @return The number of routers in connected array
    */
   void connectedRouters(int srcA, int srcG, std::vector<int>& connected) const override {
     connected.clear();

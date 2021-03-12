@@ -83,6 +83,8 @@ class DragonflyMinimalRouter : public Router
 
   void try_outport(SwitchId ej_addr, int dstG, int& outport);
 
+  void try_secondary_outport(SwitchId ej_addr, int dstG, int& outport);
+
   void routeToSwitch(Packet* pkt, SwitchId ej_addr);
 
  protected:
@@ -95,7 +97,9 @@ class DragonflyMinimalRouter : public Router
   Dragonfly* dfly_;
 
   std::vector<std::vector<int>> group_ports_;
+  std::vector<std::vector<int>> secondary_group_ports_;
   std::vector<int> group_port_rotaters_;
+  std::vector<int> secondary_group_port_rotaters_;
 
   bool static_route_;
 
