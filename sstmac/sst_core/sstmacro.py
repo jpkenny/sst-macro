@@ -314,7 +314,7 @@ def setupDeprecatedParams(params, debugList=[]):
 
 def setupDeprecated():
   import sys
-  sst.setProgramOption("timebase", "100as")
+  sst.setProgramOption("timebase", "1 ps")
   params = readCmdLineParams()
   debugList = []
   if "debug" in params:

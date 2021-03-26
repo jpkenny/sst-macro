@@ -307,35 +307,42 @@ SnapprSwitch::payloadHandler(int port)
   return newLinkHandler(&inports_[port], &SnapprInPort::handle);
 }
 
-bool
-SnapprSwitch::failLink(uint64_t linkID)
-{
-  //std::cerr << "failing linkID " << linkID << "\n";
-  for (size_t i=0; i<outports_.size(); ++i){
-    if (outports_[i]->link) {
-      //std::cerr << "port link id: " << outports_[i]->link->id() << "\n";
-      if( outports_[i]->link->id() == linkID ) {
-        //std::cerr << "failing linkID " << linkID << "\n";
-        //std::cerr << "failing outport " << i << "\n";
-        for (Router* rtr : routers_){
-          std::cerr << "failing port on a " << rtr->toString() << std::endl;
-          rtr->failPort(i);
-          }
-        return true;
-        }
-      }
-    }
-  //std::cerr << "didn't fail anything\n";
-  return false;
-}
+//bool
+//SnapprSwitch::failLink(uint64_t linkID)
+//{
+//  //std::cerr << "failing linkID " << linkID << "\n";
+//  for (size_t i=0; i<outports_.size(); ++i){
+//    if (outports_[i]->link) {
+//      //std::cerr << "port link id: " << outports_[i]->link->id() << "\n";
+//      if( outports_[i]->link->id() == linkID ) {
+//        //std::cerr << "failing linkID " << linkID << "\n";
+//        //std::cerr << "failing outport " << i << "\n";
+//        for (Router* rtr : routers_){
+//          std::cerr << "failing port on a " << rtr->toString() << std::endl;
+//          rtr->failPort(i);
+//          }
+//        return true;
+//        }
+//      }
+//    }
+//  //std::cerr << "didn't fail anything\n";
+//  return false;
+//}
+
+//void
+//SnapprSwitch::failPort(int port)
+//{
+//  for (Router* rtr : routers_){
+//    std::cerr << "failing port on a " << rtr->toString() << std::endl;
+//    rtr->failPort(port);
+//    }
+//}
 
 void
-SnapprSwitch::failPort(int port)
-{
-  for (Router* rtr : routers_){
-    std::cerr << "failing port on a " << rtr->toString() << std::endl;
-    rtr->failPort(port);
-    }
+SnapprSwitch::computeRoutes() {
+  for (int q=0; q < qos_levels_; ++q){
+    routers_[q]->computeRoutes();
+  }
 }
 
 }

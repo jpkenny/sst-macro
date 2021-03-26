@@ -105,9 +105,11 @@ class SnapprSwitch :
 
   void deadlockCheck() override;
 
-  bool failLink(uint64_t linkID) override;
+//  bool failLink(uint64_t linkID) override;
 
-  void failPort(int port) override;
+//  void failPort(int port) override;
+
+  void computeRoutes() override;
 
  private:
   friend struct SnapprInPort;

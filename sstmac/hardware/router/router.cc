@@ -118,11 +118,14 @@ Router::~Router()
   if (rng_) delete rng_;
 }
 
+//void
+//Router::failPort(int port)
+//{
+//  spkt_abort_printf("unimplemented: Router::failPort");
+//}
+
 void
-Router::failPort(int port)
-{
-  spkt_abort_printf("unimplemented: Router::failPort");
-}
+Router::computeRoutes() {}
 
 class FullyConnectedMinimalRouter : public Router {
  public:

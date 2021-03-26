@@ -104,8 +104,9 @@ class NetworkSwitch :
    */
   virtual int queueLength(int port, int vc) const = 0;
 
-  virtual bool failLink(uint64_t linkId);
-  virtual void failPort(int port);
+//  virtual bool failLink(uint64_t linkId);
+//  virtual void failPort(int port);
+  virtual void computeRoutes();
 
  protected:
   NetworkSwitch(uint32_t id, SST::Params& params);

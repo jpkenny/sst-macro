@@ -91,18 +91,21 @@ NetworkSwitch::init(SSTMAC_MAYBE_UNUSED unsigned int phase)
 #endif
 }
 
-bool
-NetworkSwitch::failLink(uint64_t linkID)
-{
-  spkt_abort_printf("unimplemented: NetworkSwitch::failLink");
-  return false;
-}
+//bool
+//NetworkSwitch::failLink(uint64_t linkID)
+//{
+//  spkt_abort_printf("unimplemented: NetworkSwitch::failLink");
+//  return false;
+//}
+
+//void
+//NetworkSwitch::failPort(int port)
+//{
+//  spkt_abort_printf("unimplemented: NetworkSwitch::failPort");
+//}
 
 void
-NetworkSwitch::failPort(int port)
-{
-  spkt_abort_printf("unimplemented: NetworkSwitch::failPort");
-}
+NetworkSwitch::computeRoutes() {}
 
 }
 }

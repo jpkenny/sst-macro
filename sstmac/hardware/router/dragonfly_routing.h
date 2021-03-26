@@ -74,16 +74,16 @@ class DragonflyMinimalRouter : public Router
     return 2;
   }
 
-  void failPort(int port) override
-  {
-    if (port < dfly_->a())
-      spkt_abort_printf("DragonflyMinimalRouter: cannot fail intragroup port %d", port);
-    failed_outports_.insert(port);
-  }
+//  void failPort(int port) override
+//  {
+//    if (port < dfly_->a())
+//      spkt_abort_printf("DragonflyMinimalRouter: cannot fail intragroup port %d", port);
+//    failed_outports_.insert(port);
+//  }
 
-  void try_outport(SwitchId ej_addr, int dstG, int& outport);
+  void computeRoutes() override;
 
-  void try_secondary_outport(SwitchId ej_addr, int dstG, int& outport);
+  void configureGroupRoutes();
 
   void routeToSwitch(Packet* pkt, SwitchId ej_addr);
 
@@ -97,16 +97,14 @@ class DragonflyMinimalRouter : public Router
   Dragonfly* dfly_;
 
   std::vector<std::vector<int>> group_ports_;
-  std::vector<std::vector<int>> secondary_group_ports_;
   std::vector<int> group_port_rotaters_;
-  std::vector<int> secondary_group_port_rotaters_;
 
   bool static_route_;
 
   int my_g_;
   int my_a_;
 
-  std::unordered_set<int> failed_outports_;
+  //std::unordered_set<int> failed_outports_;
 };
 
 class DragonflyValiantRouter : public DragonflyMinimalRouter {

@@ -81,10 +81,12 @@ class FatTreeRouter : public Router
 
   int numVC() const override { return 1; }
 
-  void failPort(int port) override
-  {
-    failed_outports_.insert(port);
-  }
+//  void failPort(int port) override
+//  {
+//    failed_outports_.insert(port);
+//  }
+
+  void computeRoutes() override;
 
   void rotateUpNext();
 
@@ -118,7 +120,7 @@ class FatTreeRouter : public Router
 
   void try_route(Packet* pkt);
 
-  std::unordered_set<int> failed_outports_;
+  //std::unordered_set<int> failed_outports_;
 };
 
 }

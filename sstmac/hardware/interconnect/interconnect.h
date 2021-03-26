@@ -104,6 +104,7 @@ class Interconnect
   int num_nodes_;
   int num_switches_;
   int num_leaf_switches_;
+  int n_random_link_failed_;
 
  private:
   static Interconnect* static_interconnect_;
@@ -225,8 +226,6 @@ class Interconnect
 
   Partition* partition_;
   ParallelRuntime* rt_;
-
-  int n_random_link_failed_;
 #endif
 };
 

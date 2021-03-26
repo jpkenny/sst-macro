@@ -80,45 +80,63 @@ namespace hw {
     my_g_ = dfly_->computeG(my_addr_);
 
     group_ports_.resize(dfly_->g());
-    secondary_group_ports_.resize(dfly_->g());
     group_port_rotaters_.resize(dfly_->g());
-    secondary_group_port_rotaters_.resize(dfly_->g());
+
+    computeRoutes();
+  }
+
+  void
+  DragonflyMinimalRouter::computeRoutes() {
+
+    for (int i=0; i<dfly_->g(); ++i) {
+        group_ports_[i].clear();
+      }
 
     std::set<int> directGroupConnections;
 
-    //figure out which groups I have a direct connection to
+    // figure out which groups I have a direct connection to
     std::vector<int> connections;
     dfly_->groupWiring()->connectedRouters(my_a_, my_g_, connections);
     for (int c=0; c < connections.size(); ++c){
         SwitchId dst = connections[c];
         int dstG = dfly_->computeG(dst);
-        if (dstG != my_g_){
-            group_ports_[dstG].push_back(c + dfly_->a());
-            directGroupConnections.insert(dstG);
+        if (dstG != my_g_) {
+            int port = c + dfly_->a();
+            if (dfly_->portActive(my_addr_,port)) {
+                group_ports_[dstG].push_back(port);
+                directGroupConnections.insert(dstG);
+              }
           }
       }
 
+    // figure out what groups I can get to through neighbors
     std::vector<std::pair<int,int>> groupConnections;
-    for (int g=0; g < dfly_->g(); ++g){
+    for (int g=0; g < dfly_->g(); ++g) {
         if (g == my_g_) continue;
-        //if (directGroupConnections.find(g) != directGroupConnections.end()) continue;
+        if (directGroupConnections.find(g) != directGroupConnections.end()) continue;
 
         dfly_->groupWiring()->connectedToGroup(my_g_, g, groupConnections);
-        if (groupConnections.size() == 0){
-            spkt_abort_printf("Got zero group connections from %d->%d", my_g_, g);
+        for (auto& pair : groupConnections) {
+            int gateway_a = pair.first;
+            // determine switch id
+            SwitchId gateway_id = dfly_->getUid(gateway_a,my_g_);
+            std::vector<Topology::Connection> connections;
+            dfly_->connectedOutports(gateway_id, connections);
+            for (auto it: connections) {
+                if (dfly_->computeG(it.dst) == g && dfly_->portActive( it.src, it.src_outport) ) {
+                    group_ports_[g].push_back(gateway_a);
+                    break;
+                  }
+              }
           }
-        for (auto& pair : groupConnections){
-            if (pair.first != my_a_)
-              secondary_group_ports_[g].push_back(pair.first);
+        if (!group_ports_[g].size()) {
+            spkt_abort_printf("Got zero group connections from %d->%d", my_g_, g);
           }
       }
 
     for (int i=0; i < group_ports_.size(); ++i){
         if (!group_ports_[i].empty()){
             group_port_rotaters_[i] = my_addr_ % group_ports_[i].size();
-          }
-        if (!secondary_group_ports_[i].empty()){
-            secondary_group_port_rotaters_[i] = my_addr_ % secondary_group_ports_[i].size();
           }
       }
 
@@ -139,92 +157,33 @@ namespace hw {
     routeToSwitch(pkt, ejaddr);
   }
 
-  void DragonflyMinimalRouter::try_outport(SwitchId ej_addr, int dstG, int& outport) {
-    if (group_ports_[dstG].size() > 0) {
-        if (static_route_){
-            int rotater = ej_addr % group_ports_[dstG].size();
-            outport = group_ports_[dstG][rotater];
-          } else {
-            outport = group_ports_[dstG][group_port_rotaters_[dstG]];
-            group_port_rotaters_[dstG] = (group_port_rotaters_[dstG] + 1) % group_ports_[dstG].size();
-          }
-      }
-  }
-
-  void DragonflyMinimalRouter::try_secondary_outport(SwitchId ej_addr, int dstG, int& outport) {
-    if (secondary_group_ports_[dstG].size() > 0) {
-        if (static_route_){
-            int rotater = ej_addr % secondary_group_ports_[dstG].size();
-            outport = secondary_group_ports_[dstG][rotater];
-          } else {
-            outport = secondary_group_ports_[dstG][secondary_group_port_rotaters_[dstG]];
-            secondary_group_port_rotaters_[dstG] = (secondary_group_port_rotaters_[dstG] + 1) % secondary_group_ports_[dstG].size();
-          }
-      }
-  }
-
   void DragonflyMinimalRouter::routeToSwitch(Packet* pkt, SwitchId ej_addr)
   {
-    //std::cerr << "routeToSwitch() on switch " << my_addr_ << "\n";
-    //std::cerr << "my_g_: " << my_g_ << "\n";
     auto hdr = pkt->rtrHeader<header>();
     hdr->deadlock_vc = hdr->num_group_hops;
     int dstG = dfly_->computeG(ej_addr);
-    //std::cerr << "dstG: " << dstG << "\n";
     if (dstG == my_g_){
       int dstA = dfly_->computeA(ej_addr);
       hdr->edge_port = dstA;
-    }
-    else {
-        int dst_port = -1;
-        try_outport(ej_addr, dstG, dst_port);
-        int first_port = dst_port;
-        bool fail_primary=false;
-        bool fail_secondary=false;
-        //std::cerr << "first port: " << first_port << std::endl;
-        //std::cerr << "number group ports: " << group_ports_[dstG].size() << "\n";
-        while( failed_outports_.find( dst_port ) != failed_outports_.end() ) {
-            //std::cerr << dst_port << " is a failed port\n";
-            //for (size_t i=0; i<group_ports_[dstG].size(); ++i)
-            //  std::cerr << "group_port[" << i << "]: " << group_ports_[dstG][i] << "\n";
-            try_outport(ej_addr, dstG, dst_port);
-            //std::cerr << "next port is " << dst_port << "\n";
-            if( dst_port == first_port ) {
-                fail_primary=true;
-                break;
-              }
-          }
-        if (dst_port == -1) fail_primary=true;
-        if (fail_primary == true) {
-            //std::cerr << "number secondary group ports: " << secondary_group_ports_[dstG].size() << "\n";
-            try_secondary_outport(ej_addr, dstG, dst_port);
-            first_port = dst_port;
-            while( failed_outports_.find( dst_port ) != failed_outports_.end() ) {
-                //std::cerr << dst_port << " is a failed port\n";
-                //for (size_t i=0; i<secondary_group_ports_[dstG].size(); ++i)
-                  //std::cerr << "group_port[" << i << "]: " << secondary_group_ports_[dstG][i] << "\n";
-                try_secondary_outport(ej_addr, dstG, dst_port);
-                //std::cerr << "next port is " << dst_port << "\n";
-                if( dst_port == first_port ) {
-                    fail_secondary=true;
-                    break;
-                  }
-
-              }
-            //std::cerr << "secondary dst_port is: " << dst_port << "\n";
-          }
-        if (fail_primary && fail_secondary)
-          spkt_abort_printf("DragonflyMinimalRouter::route: packet not routable due to failed links");
-        if (dst_port >= dfly_->a()){
-            hdr->num_group_hops++;
-          }
-        if (dst_port >= (dfly_->a() + dfly_->h())){
-            spkt_abort_printf("Got bad group port %d going to group %d from switch=(%d,%d)",
-                              dst_port, dstG, my_a_, my_g_);
-          }
-        //std::cerr << "output to port " << dst_port << "\n";
-        hdr->edge_port = dst_port;
+    } else {
+      int dst_port;
+      if (static_route_){
+        int rotater = ej_addr % group_ports_[dstG].size();
+        dst_port = group_ports_[dstG][rotater];
+      } else {
+        dst_port = group_ports_[dstG][group_port_rotaters_[dstG]];
+        group_port_rotaters_[dstG] = (group_port_rotaters_[dstG] + 1) % group_ports_[dstG].size();
       }
+      if (dst_port >= dfly_->a()){
+        hdr->num_group_hops++;
+      }
+      if (dst_port >= (dfly_->a() + dfly_->h())){
+        spkt_abort_printf("Got bad group port %d going to group %d from switch=(%d,%d)",
+                          dst_port, dstG, my_a_, my_g_);
+      }
+      hdr->edge_port = dst_port;
+    }
+
   }
 
   DragonflyValiantRouter::DragonflyValiantRouter(SST::Params& params, Topology *top,
@@ -233,6 +192,7 @@ namespace hw {
   {
     group_gateways_.resize(dfly_->g());
     gateway_rotater_.resize(dfly_->g());
+
     std::vector<int> connected;
     for (int a=0; a < dfly_->a(); ++a){
       if (a != my_a_){
@@ -280,53 +240,28 @@ namespace hw {
 
   void DragonflyValiantRouter::checkValiantInterGroup(Packet* pkt, int dst_g)
   {
-    //std::cerr << "checkValiantInterGroup()\n";
     uint32_t seed = netsw_->now().time.ticks();
     uint32_t attempt = 0;
     int new_g = dst_g;
-    int outport=-1;
-    int dest_switch;
-    std::set<int> groups_attempted;
-    //std::cerr << "my_g_: " << my_g_ << "\n";
-    //std::cerr << "intergroup new_g: " << new_g << "\n";
-    while ( ( new_g == my_g_ ||
-              new_g == dst_g ||
-              failed_outports_.find( outport ) != failed_outports_.end() ) &&
-            int(groups_attempted.size()) < dfly_->g() )
-            {
+    while (new_g == my_g_ || new_g == dst_g){
       new_g = randomNumber(dfly_->g(), attempt++, seed);
-      groups_attempted.insert(new_g);
-      //std::cerr << "new_g: " << new_g << "\n";
-      if (new_g != my_g_) {
-        auto val_dest = group_gateways_[new_g][gateway_rotater_[new_g]];
-        outport = val_dest.first;
-        dest_switch = val_dest.second;
-        }
     }
-    if (int(groups_attempted.size()) == dfly_->g())
-      spkt_abort_printf("DragonflyValiantRouter: packet not routable (intergroup)");
     auto hdr = pkt->rtrHeader<header>();
-    hdr->edge_port = outport;
-    hdr->dest_switch = dest_switch;
+    auto val_dest = group_gateways_[new_g][gateway_rotater_[new_g]];
+    hdr->edge_port = val_dest.first;
+    hdr->dest_switch = val_dest.second;
     gateway_rotater_[new_g] = (gateway_rotater_[new_g] + 1) % group_gateways_[new_g].size();
     hdr->stage_number = valiant_stage;
   }
 
   void DragonflyValiantRouter::checkValiantIntraGroup(Packet* pkt, int dst_a){
-    //uint32_t seed = netsw_->now().time.ticks();
-    uint32_t seed = 0;
+    uint32_t seed = netsw_->now().time.ticks();
     uint32_t attempt = 0;
     int new_a = dst_a;
-    std::set<int> groups_attempted;
-    while ( (new_a == my_a_ ||
-             new_a == dst_a ||
-             failed_outports_.find( new_a ) != failed_outports_.end() ) &&
-            int(groups_attempted.size()) < dfly_->g()) {
+    while (new_a == my_a_ || new_a == dst_a){
       new_a = randomNumber(dfly_->a(), attempt++, seed);
-      groups_attempted.insert(new_a);
     }
-    if (int(groups_attempted.size()) == dfly_->g())
-      spkt_abort_printf("DragonflyValiantRouter: packet not routable (intragroup)");
+
     auto hdr = pkt->rtrHeader<header>();
     hdr->edge_port = new_a;
     hdr->dest_switch = dfly_->getUid(new_a, my_g_);
@@ -334,7 +269,6 @@ namespace hw {
   }
 
   void DragonflyValiantRouter::route(Packet *pkt) {
-    //std::cerr << "valiant routing\n";
     auto hdr = pkt->rtrHeader<header>();
     SwitchId ej_addr = pkt->toaddr() / dfly_->concentration();
     if (ej_addr == my_addr_){
@@ -361,13 +295,11 @@ namespace hw {
         if (my_addr_ == hdr->dest_switch){
           hdr->stage_number = final_stage;
         } else {
-          //std::cerr << "continuing valiant stage\n";
           routeToSwitch(pkt, hdr->dest_switch);
           break;
         }
       }
       case final_stage: {
-        //std::cerr << "final stage routing\n";
         routeToSwitch(pkt, ej_addr);
         hdr->dest_switch = ej_addr;
         break;

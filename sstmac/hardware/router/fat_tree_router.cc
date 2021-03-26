@@ -113,7 +113,8 @@ FatTreeRouter::route(Packet* pkt) {
   try_route(pkt);
   header* hdr = pkt->rtrHeader<header>();
   int first_port = hdr->edge_port;
-  while( failed_outports_.find( hdr->edge_port ) != failed_outports_.end() ) {
+  while( !ft_->portActive(my_addr_,hdr->edge_port ) ) {
+    //std::cerr << "rerouting due to failed port\n";
     try_route(pkt);
     if( hdr->edge_port == first_port )
       spkt_abort_printf("FatTreeRouter::route: packet not routable due to failed links");
@@ -182,6 +183,11 @@ FatTreeRouter::getDownPort(int path)
   int nroutes = routes.size();
   down_rotaters_[path] = (down_rotaters_[path]+1) % nroutes;
   return port;
+}
+
+void
+FatTreeRouter::computeRoutes() {
+  //noop
 }
 
 }

@@ -514,6 +514,19 @@ class Topology : public sprockit::printable
 
   static std::string getPortNamespace(int port);
 
+  void addConnection(Connection con) {
+    connections_.push_back(con);
+  }
+
+  void findFailedPorts();
+
+  bool portActive(SwitchId switchid, int portid) {
+    if ( failed_ports_.find( std::pair<SwitchId,int>(switchid,portid) ) != failed_ports_.end() )
+        return false;
+    else
+      return true;
+  }
+
  protected:
   Topology(SST::Params& params);
 
@@ -531,6 +544,9 @@ class Topology : public sprockit::printable
   std::string dot_file_;
   std::string xyz_file_;
   std::string dump_file_;
+  std::vector<Connection> connections_;
+  std::string failed_filename_;
+  std::set< std::pair< SwitchId, int > > failed_ports_;
 
 };
 

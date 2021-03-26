@@ -120,6 +120,12 @@ Topology::Topology(SST::Params& params)
   if (params.contains("dump_file")){
     dump_file_ = params.find<std::string>("dump_file");
   }
+
+  if( params.contains("link_failure_filename") ) {
+    failed_filename_ = params.find<std::string>("link_failure_filename");
+    std::cerr << "will read failure file " << failed_filename_ << "\n";
+    }
+
 }
 
 Topology::~Topology()
@@ -331,6 +337,30 @@ void
 Topology::portConfigDump(const std::string & /*dumpFile*/)
 {
   spkt_abort_printf("Topology chosen does not support port dump");
+}
+
+void
+Topology::findFailedPorts() {
+
+  if (failed_filename_.size() == 0)
+    return;
+
+  std::ifstream in(failed_filename_);
+  unsigned int switchid;
+  int portid;
+  while( in >> switchid ) {
+      in >> portid;
+      std::cerr << "failure file: switch " << switchid << " port " << portid << "\n";
+      failed_ports_.insert( std::pair<SwitchId,int>(switchid,portid) );
+      for( auto it: connections_ ) {
+          if( it.dst == switchid && it.dst_inport == portid ) {
+              failed_ports_.insert( std::pair<SwitchId,int>(it.src,it.src_outport) );
+              std::cerr << "failing corresponding port " << it.src_outport << " on switch " << it.src << "\n";
+              break;
+            }
+        }
+    }
+
 }
 
 class MerlinTopology : public Topology {

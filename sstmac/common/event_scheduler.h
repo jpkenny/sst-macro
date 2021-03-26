@@ -91,6 +91,10 @@ class EventLink {
     send(selflat_, ev);
   }
 
+  uint64_t id() {
+    return link_->getId();
+  }
+
  private:
   SST::Link* link_;
   TimeDelta selflat_;
