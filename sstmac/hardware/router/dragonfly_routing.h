@@ -143,6 +143,8 @@ class DragonflyValiantRouter : public DragonflyMinimalRouter {
 
   void route(Packet *pkt) override;
 
+  void computeRoutes() override;
+
  protected:
   std::vector<int> gateway_rotater_; //for non-minimal
   std::vector<std::vector<std::pair<int,int>>> group_gateways_;

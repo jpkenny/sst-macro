@@ -193,49 +193,75 @@ namespace hw {
     group_gateways_.resize(dfly_->g());
     gateway_rotater_.resize(dfly_->g());
 
+    computeRoutes();
+  }
+
+  void
+  DragonflyValiantRouter::computeRoutes() {
+
+    DragonflyMinimalRouter::computeRoutes();
+
+    for (int i=0; i<group_gateways_.size(); ++i)
+      group_gateways_[i].clear();
+
     std::vector<int> connected;
     for (int a=0; a < dfly_->a(); ++a){
-      if (a != my_a_){
-        dfly_->groupWiring()->connectedRouters(a, my_g_, connected);
-        for (int sid : connected){
-          int dst_g = dfly_->computeG(sid);
-          group_gateways_[dst_g].emplace_back(a, sid);
-        }
+        if (a != my_a_){
+            dfly_->groupWiring()->connectedRouters(a, my_g_, connected);
+            for (int sid : connected){
+                int dst_g = dfly_->computeG(sid);
+                std::vector<Topology::Connection> connections;
+                dfly_->connectedOutports(dfly_->getUid(a,my_g_), connections);
+                for (auto it: connections) {
+                    if (dfly_->computeG(it.dst) == dst_g && dfly_->portActive( it.src, it.src_outport) ) {
+                        group_gateways_[dst_g].emplace_back(a, sid);
+                        break;
+                      }
+                  }
+              }
+          }
       }
-    }
 
     for (int i=0; i < gateway_rotater_.size(); ++i){
-      if (i != my_g_){
-        if (group_gateways_[i].empty()){
-          std::vector<int> connected;
-          //find me a router in every group that has a connection
-          for (int inter_g=0; inter_g < dfly_->g(); ++inter_g){
-            if (inter_g == my_g_ || inter_g == i) continue;
-
-            int dest = -1;
-            for (int a=0; a < dfly_->a(); ++a){
-              int aa = (a+my_a_) % dfly_->a(); //scatter for diff switches
-              dfly_->groupWiring()->connectedRouters(aa, inter_g, connected);
-              for (int sid : connected){
-                int grp = dfly_->computeG(sid);
-                if (grp == i){
-                  dest = dfly_->getUid(a, inter_g);
-                  break;
-                }
+        if (i != my_g_){
+            if (group_gateways_[i].empty()){
+                std::vector<int> connected;
+                //find me a router in every group that has a connection
+                for (int inter_g=0; inter_g < dfly_->g(); ++inter_g){
+                    if (inter_g == my_g_ || inter_g == i) continue;
+                    int dest = -1;
+                    for (int a=0; a < dfly_->a(); ++a){
+                        int aa = (a+my_a_) % dfly_->a(); //scatter for diff switches
+                        dfly_->groupWiring()->connectedRouters(aa, inter_g, connected);
+                        for (int sid : connected){
+                            int grp = dfly_->computeG(sid);
+                            if (grp == i) {
+                                int swid = dfly_->getUid(aa, inter_g);
+                                std::vector<Topology::Connection> connections;
+                                dfly_->connectedOutports(swid, connections);
+                                for (auto it: connections) {
+                                    if (dfly_->portActive( it.src, it.src_outport) ) {
+                                        dest = swid;
+                                        break;
+                                      }
+                                  }
+                                if (dest != -1) break;
+                              }
+                          }
+                        if (dest != -1) break;
+                      }
+                    if (dest == -1){
+                        spkt_abort_printf("Group %d has no extra-hop valiant connections to group %d",
+                                          inter_g, i);
+                      }
+                    auto& ports = group_ports_[inter_g];
+                    int my_port = ports[my_a_ % ports.size()];
+                    group_gateways_[i].emplace_back(my_port, dest);
+                  }
               }
-            }
-            if (dest == -1){
-              spkt_abort_printf("Group %d has no extra-hop valiant connections to group %d",
-                                inter_g, i);
-            }
-            auto& ports = group_ports_[inter_g];
-            int my_port = ports[my_a_ % ports.size()];
-            group_gateways_[i].emplace_back(my_port, dest);
+            gateway_rotater_[i] = my_addr_ % group_gateways_[i].size();
           }
-        }
-        gateway_rotater_[i] = my_addr_ % group_gateways_[i].size();
       }
-    }
   }
 
   void DragonflyValiantRouter::checkValiantInterGroup(Packet* pkt, int dst_g)
@@ -272,7 +298,6 @@ namespace hw {
     auto hdr = pkt->rtrHeader<header>();
     SwitchId ej_addr = pkt->toaddr() / dfly_->concentration();
     if (ej_addr == my_addr_){
-      //std::cerr << "ejecting\n";
       hdr->edge_port = dfly_->a() + dfly_->h() + pkt->toaddr() % dfly_->concentration();
       hdr->deadlock_vc = 0;
       return;
@@ -282,7 +307,6 @@ namespace hw {
       case initial_stage: {
         int dst_a = dfly_->computeA(ej_addr);
         int dst_g = dfly_->computeG(ej_addr);
-        //std::cerr << "valiant stage routing to " << dst_g << " " << dst_a << "\n";
         if (dst_g == my_g_){
           checkValiantIntraGroup(pkt, dst_a);
         } else {
