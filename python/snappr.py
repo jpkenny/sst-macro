@@ -73,11 +73,27 @@ for i in range(num_nodes):
     num_channels=8
   ))
 
+sideX = 0.5
+sideY = 0.5
+sideZ = 0.5
+sst.setStatisticLoadLevel(7)
+sst.setStatisticOutput("sst.vtkstatisticoutputexodus")
 for i in range(num_switches):
   connections = system.switchConnections(i)
   switch = switches[i]
+  switch_geometry = system.switchGeometry(i)
+  print("switchConnections: ", connections)
+  print("switch_geometry: ", switch_geometry)
+  p = 0;
   for src_id, dst_id, src_outport, dst_inport in connections:
+      stat_params = dict(
+        origin=[1, 1 + p, 1],
+        size=[sideX, sideY, sideZ],
+        shape="line",
+        type="sst.IntensityStatistic",
+      )
       port = switch.setSubComponent("outport%d" % src_outport, "macro.snappr_outport")
+      port.enableStatistics(["traffic_intensity"], stat_params)
       port.addParams(dict(
         bandwidth=link_bandwidth,
         latency=link_latency,

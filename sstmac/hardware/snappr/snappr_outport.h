@@ -92,6 +92,10 @@ struct SnapprOutPort : public SubComponent {
     SST_ELI_ELEMENT_VERSION(1,0,0),
     "implements a basic Snappr OutPort",
     sstmac::hw::SnapprOutPort)
+
+  SST_ELI_DOCUMENT_STATISTICS(
+    {"traffic_intensity", "Count the traffic on a port", "unit of traffic", 1},
+)
 #else
   SST_ELI_DECLARE_BASE(SnapprOutPort)
   SST_ELI_DECLARE_DEFAULT_INFO()

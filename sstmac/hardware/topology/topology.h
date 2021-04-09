@@ -150,6 +150,7 @@ class Topology : public sprockit::printable
     xyz(double X, double Y, double Z) :
       x(X), y(Y), z(Z){}
 
+
     double& operator[](int dim){
       switch(dim){
       case 0: return x;
@@ -164,10 +165,10 @@ class Topology : public sprockit::printable
     }
 
     xyz rotate(const Rotation& r) const {
-      xyz ret;
-      ret.x += r.x[0]*x + r.x[1]*y + r.x[2]*z;
-      ret.y += r.y[0]*x + r.y[1]*y + r.y[2]*z;
-      ret.z += r.z[0]*x + r.z[1]*y + r.z[2]*z;
+      xyz ret{};
+      ret.x = r.x[0]*x + r.x[1]*y + r.x[2]*z;
+      ret.y = r.y[0]*x + r.y[1]*y + r.y[2]*z;
+      ret.z = r.z[0]*x + r.z[1]*y + r.z[2]*z;
       return ret;
     }
   };
@@ -251,7 +252,7 @@ class Topology : public sprockit::printable
     }
 
     xyz extent() const {
-      return size.rotate(rot);
+      return size;
     }
 
   };

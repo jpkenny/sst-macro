@@ -97,7 +97,8 @@ SnapprOutPort::SnapprOutPort(uint32_t id, SST::Params& params,
         parent->registerMultiStatistic<int,uint64_t,uint64_t>(params, "state", subId));
   queue_depth_ftq = dynamic_cast<FTQCalendar*>(
         parent->registerMultiStatistic<int,uint64_t,uint64_t>(params, "queue_depth", subId));
-        intensity = registerMultiStatistic<uint64_t, double>(params, "traffic_intensity", subId);
+#else
+  intensity = registerMultiStatistic<uint64_t, double>(params, "traffic_intensity", subId);
 #endif
   ftq_idle_state = FTQTag::allocateCategoryId("idle:" + portName);
   ftq_active_state = FTQTag::allocateCategoryId("active:" + portName);
@@ -302,7 +303,8 @@ SnapprOutPort::arbitrate()
   if (ready()){
     if (intensity){
       intensity->addData(parent_->now().usec(), queueLength());
-    }    logQueueDepth();
+    }
+    logQueueDepth();
     pkt_debug("arbitrating packet from port %d with %d queued",
               number_, queueLength());
     SnapprPacket* pkt = popReady();

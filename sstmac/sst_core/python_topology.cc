@@ -52,6 +52,7 @@ Questions? Contact sst-macro-help@sandia.gov
 #if PY_MAJOR_VERSION >= 3
  #define PY_OBJ_HEAD PyVarObject_HEAD_INIT(nullptr, 0)
  #define ConvertToPythonLong(x) PyLong_FromLong(x)
+ #define ConvertToPythonDouble(x) PyFloat_FromDouble(x)
  #define ConvertToCppLong(x) PyLong_AsLong(x)
  #define ConvertToPythonString(x) PyUnicode_FromString(x)
  #define ConvertToCppString(x) PyUnicode_AsUTF8(x)
@@ -74,6 +75,7 @@ Questions? Contact sst-macro-help@sandia.gov
  #define Py_TYPE(ob) (((PyObject*)(ob))->ob_type)
  #define PY_OBJ_HEAD PyVarObject_HEAD_INIT(nullptr, 0)
  #define ConvertToPythonLong(x) PyInt_FromLong(x)
+ #define ConvertToPythonDouble(x) PyFloat_FromDouble(x)
  #define ConvertToCppLong(x) PyInt_AsLong(x)
  #define ConvertToPythonString(x) PyString_FromString(x)
  #define ConvertToCppString(x) PyString_AsString(x)
@@ -282,22 +284,15 @@ sys_get_switch_geometry(SystemPy_t *self, PyObject *idx)
 
   sstmac::hw::Topology::xyz origin = geom.box.origin();
   sstmac::hw::Topology::xyz extent = geom.box.extent();
-  int x = origin.x;
-  int y = origin.y;
-  int z = origin.z;
-  int ex = extent.x;
-  int ey = extent.y;
-  int ez = extent.z;
-  std::cout << " topo : " << x <<" " << y <<" " << z <<" " << ex <<" " << ey <<" " <<ez <<std::endl;
   PyObject* geomTuple = PyTuple_New(3);
   PyObject* geomOriginTuple = PyTuple_New(3);
   PyObject* geomExtentTuple = PyTuple_New(3);
-  PyObject* originX = ConvertToPythonLong(origin.x);
-  PyObject* originY = ConvertToPythonLong(origin.y);
-  PyObject* originZ = ConvertToPythonLong(origin.z);
-  PyObject* extentX = ConvertToPythonLong(extent.x);
-  PyObject* extentY = ConvertToPythonLong(extent.y);
-  PyObject* extentZ = ConvertToPythonLong(extent.z);
+  PyObject* originX = ConvertToPythonDouble(origin.x);
+  PyObject* originY = ConvertToPythonDouble(origin.y);
+  PyObject* originZ = ConvertToPythonDouble(origin.z);
+  PyObject* extentX = ConvertToPythonDouble(extent.x);
+  PyObject* extentY = ConvertToPythonDouble(extent.y);
+  PyObject* extentZ = ConvertToPythonDouble(extent.z);
   PyTuple_SetItem(geomOriginTuple, 0, originX);
   PyTuple_SetItem(geomOriginTuple, 1, originY);
   PyTuple_SetItem(geomOriginTuple, 2, originZ);
@@ -312,9 +307,9 @@ sys_get_switch_geometry(SystemPy_t *self, PyObject *idx)
   for (int p=0; p < geom.ports.size(); ++p){
     sstmac::hw::Topology::xyz port_xyz = geom.get_port_geometry(p).origin();
     PyObject* portTuple = PyTuple_New(3);
-    PyObject* portX = ConvertToPythonLong(port_xyz.x);
-    PyObject* portY = ConvertToPythonLong(port_xyz.y);
-    PyObject* portZ = ConvertToPythonLong(port_xyz.z);
+    PyObject* portX = ConvertToPythonDouble(port_xyz.x);
+    PyObject* portY = ConvertToPythonDouble(port_xyz.y);
+    PyObject* portZ = ConvertToPythonDouble(port_xyz.z);
     PyTuple_SetItem(portTuple, 0, portX);
     PyTuple_SetItem(portTuple, 1, portY);
     PyTuple_SetItem(portTuple, 2, portZ);
