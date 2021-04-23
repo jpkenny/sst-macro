@@ -98,6 +98,7 @@ SnapprOutPort::SnapprOutPort(uint32_t id, SST::Params& params,
   queue_depth_ftq = dynamic_cast<FTQCalendar*>(
         parent->registerMultiStatistic<int,uint64_t,uint64_t>(params, "queue_depth", subId));
 #else
+  std::cout << "registerMultiStatistic"<< getName() << " "<< isAnonymous() << " "<< isUser() << std::endl;
   intensity = registerMultiStatistic<uint64_t, double>(params, "traffic_intensity", subId);
 #endif
   ftq_idle_state = FTQTag::allocateCategoryId("idle:" + portName);
@@ -227,6 +228,7 @@ SnapprOutPort::send(SnapprPacket* pkt, Timestamp now)
 void
 SnapprOutPort::scheduleArbitration()
 {
+
 #if SSTMAC_SANITY_CHECK
   if (arbitration_scheduled){
     spkt_abort_printf("arbitration already scheduled on port %s:%d", portName_.c_str(), number_);
@@ -302,6 +304,7 @@ SnapprOutPort::arbitrate()
   arbitration_scheduled = false;
   if (ready()){
     if (intensity){
+        std::cout << "SnapprOutPort:: arbitrate intensity" << std::endl;
       intensity->addData(parent_->now().usec(), queueLength());
     }
     logQueueDepth();

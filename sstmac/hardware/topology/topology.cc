@@ -143,9 +143,23 @@ Topology::staticTopology(SST::Params& params)
 {
   if (!staticTopology_){
     SST::Params top_params = params.find_scoped_params("topology");
+    if(top_params.size() == 0) {
+        top_params.insert("name", "dragonfly");
+        top_params.insert("geometry", "[4,3]");
+        top_params.insert("h", "6");
+        top_params.insert("inter_group", "circulant");
+        top_params.insert("concentration", "4");
+    }
+    params.insert(top_params);
     std::string name = top_params.find<std::string>("name");
+    std::cout << "Topology::staticTopology" << top_params.size() << std::endl;
+
     if (name.empty()){
-      spkt_abort_printf("no topology.name parameter in namespace");
+//      spkt_abort_printf("no topology.name parameter in namespace");
+    }
+    for(auto key : top_params.getKeys()) {
+        std::cout << "key: " << key  << std::endl;
+
     }
     staticTopology_ = sprockit::create<Topology>("macro", name, top_params);
   }

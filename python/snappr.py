@@ -45,6 +45,7 @@ for i in range(num_nodes):
     "app1.name" : "mpi_ping_all",
     "app1.launch_cmd" : "aprun -n 4 -N 1",
     "id" : i,
+    "app1.message_size" : "20KB",
   })
   nodes[i] = node
 
@@ -55,7 +56,8 @@ for i in range(num_nodes):
     bandwidth=nic_bandwidth,
     latency=nic_latency,
     credits="8KB",
-  ))
+    negligible_size=0,
+ ))
 
   inj_port = nic.setSubComponent("outport", "macro.snappr_outport")
   inj_port.addParams(dict(
@@ -76,8 +78,7 @@ for i in range(num_nodes):
 sideX = 0.5
 sideY = 0.5
 sideZ = 0.5
-sst.setStatisticLoadLevel(7)
-sst.setStatisticOutput("sst.vtkstatisticoutputexodus")
+
 for i in range(num_switches):
   connections = system.switchConnections(i)
   switch = switches[i]
@@ -153,9 +154,9 @@ for i in range(nproc):
 for i in range(num_nodes):
   ep = nodes[i]
   for p in range(nproc):
+    print("Injection %d on switch %d" % (p,nproc))
     sw = logp_switches[p]
     inj_sw = system.nodeToLogPSwitch(i)
-
     #use inj_sw to set a no-cut
 
     link_name = "logPinjection%d->%d" % (i, p)
@@ -172,5 +173,6 @@ for i in range(num_nodes):
     port_name = "output%d" % (i)
     sw.addLink(link, port_name, small_latency)
 
-
+sst.setStatisticLoadLevel(7)
+sst.setStatisticOutput("sst.vtkstatisticoutputexodus")
 sst.macro.debug("mpi")
