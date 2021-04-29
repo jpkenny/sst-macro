@@ -492,6 +492,9 @@ namespace hw {
       break;
     }
     hdr->deadlock_vc = hdr->num_hops;
+    if (hdr->deadlock_vc >= numVC()){
+      spkt_abort_printf("Packet %p:%s too many hops", pkt, pkt->toString().c_str());
+    }
     ++hdr->num_hops;
   }
 

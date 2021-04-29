@@ -211,6 +211,10 @@ class DragonflyPARRouter : public DragonflyUGALRouter {
   {
   }
 
+  int numVC() const override {
+    return 7;
+  }
+
   void route(Packet *pkt) override;
 
 };
