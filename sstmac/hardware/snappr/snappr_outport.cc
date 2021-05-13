@@ -98,7 +98,7 @@ SnapprOutPort::SnapprOutPort(SST::ComponentId_t id, SST::Params& params,
   queue_depth_ftq = dynamic_cast<FTQCalendar*>(
         parent->registerMultiStatistic<int,uint64_t,uint64_t>(params, "queue_depth", subId));
 #else
-  std::cout << "registerMultiStatistic"<< getName() << " "<< isAnonymous() << " "<< isUser() << std::endl;
+  std::cout << "registerMultiStatistic "<< getName() << " "<< isAnonymous() << " "<< isUser() << std::endl;
   intensity = registerMultiStatistic<uint64_t, double>(params, "traffic_intensity", subId);
 #endif
   ftq_idle_state = FTQTag::allocateCategoryId("idle:" + portName);

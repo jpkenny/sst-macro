@@ -78,9 +78,10 @@ class SnapprSwitch :
 
   SST_ELI_DOCUMENT_PORTS(SSTMAC_VALID_PORTS)
 
-  SST_ELI_DOCUMENT_SUBCOMPONENT_SLOTS(
-      {"outport%(num_ports)d", "The output ports for the Switch", "sstmac::SnapprOutport"},
-  )
+// %()d doesn't work for subcomponent slots!
+//  SST_ELI_DOCUMENT_SUBCOMPONENT_SLOTS(
+//      {"outport%(num_ports)d", "The output ports for the Switch", "sstmac::SnapprOutPort"},
+//   )
 
   SST_ELI_DOCUMENT_STATISTICS(
     {"xmit_stall", "congestion statistic", "cycles", 1}, // Name, Desc, Units, Enable Level

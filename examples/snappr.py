@@ -5,6 +5,7 @@ from sst.macro import Interconnect
 
 swParams = {
   "name" : "snappr",
+  "credits" : "8KB",
   "router" : {
     "seed" : "42",
     "name" : "dragonfly_minimal",
@@ -25,7 +26,8 @@ appParams = {
   "allocation" : "first_available",
   "indexing" : "block",
   "name" : "mpi_ping_all",
-  "launch_cmd" : "aprun -n 80 -N 2",
+  #"launch_cmd" : "aprun -n 80 -N 2",
+  "launch_cmd" : "aprun -n 2 -N 2",
   "sleep_time" : "1us",
   "message_size" : "2KB",
 }
@@ -39,6 +41,7 @@ memParams = {
 
 nicParams = {
   "name" : "snappr",
+  "credits" : "12KB",
   "injection" : {
     "bandwidth" : "1.0GB/s",
     "latency" : "50ns",

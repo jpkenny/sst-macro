@@ -124,7 +124,7 @@ SnapprNIC::SnapprNIC(uint32_t id, SST::Params& params, Node* parent) :
   inj_byte_delay_ = TimeDelta(params.find<SST::UnitAlgebra>("bandwidth").getValue().inverse().toDouble());
   for (int i=0; i < num_ports; ++i){
     std::string subId = sprockit::sprintf("NIC%d:%d", addr(), i);
-    outports_[i] = loadSub<SnapprOutPort>("snappr", "outport", i, inj_params,
+    outports_[i] = loadSub<SnapprOutPort>("outport" + std::to_string(i), "SnapprOutPort", i, inj_params,
                                           subId, "NIC_send", i,
                                           true/*always need congestion on NIC*/,
                                           flow_control_,  NIC::parent(),
