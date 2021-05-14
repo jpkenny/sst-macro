@@ -76,9 +76,6 @@ class SnapprNIC :
 //  SST_ELI_DOCUMENT_SUBCOMPONENT_SLOTS(
 //      {"outport%(num_ports)d", "The injection output port for the NIC", "sstmac::SnapprOutport"},
 //  )
-  SST_ELI_DOCUMENT_SUBCOMPONENT_SLOTS(
-      {"outport0", "The injection output port for the NIC", "sstmac::SnapprOutport"},
-  )
 #else
   SST_ELI_REGISTER_DERIVED(
     NIC,

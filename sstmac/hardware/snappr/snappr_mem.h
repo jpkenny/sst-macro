@@ -58,6 +58,13 @@ class SnapprMemoryModel : public MemoryModel
 {
  public:
 #if SSTMAC_INTEGRATED_SST_CORE
+//  SST_ELI_REGISTER_SUBCOMPONENT_DERIVED(
+//    SnapprMemoryModel,
+//    "macro",
+//    "snappr_memory",
+//    SST_ELI_ELEMENT_VERSION(1,0,0),
+//    "a memory model using pisces packet flow for contention",
+//    sstmac::hw::MemoryModel)
   SST_ELI_REGISTER_SUBCOMPONENT_DERIVED(
     SnapprMemoryModel,
     "macro",

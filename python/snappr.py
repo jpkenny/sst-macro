@@ -35,6 +35,9 @@ for i in range(num_switches):
     "router.name" : router_name,
     "credits" : "8KB",
     "id" : i,
+    "link.bandwidth" : link_bandwidth,
+    "link.latency" : link_latency,
+    "link.mtu" : mtu
   })
   switches[i] = switch
 
@@ -46,34 +49,28 @@ for i in range(num_nodes):
     "app1.launch_cmd" : "aprun -n 4 -N 1",
     "id" : i,
     "app1.message_size" : "20KB",
+    "memory.name" : "snappr",
+    "memory.channel_bandwidth" : "1.0GB/s",
+    "memory.num_channels" : 8,
+    "nic.name" : "snappr",
+    "nic.bandwidth" : nic_bandwidth,
+    "nic.latency" : link_latency,
+    "nic.credits" : "8KB",
+    "nic.mtu" : mtu,
+    "nic.injection.bandwidth" : nic_bandwidth,
+    "nic.injection.latency" : link_latency,
+    "nic.injection.credits" : "8KB",
+    "nic.injection.mtu" : mtu,
   })
   nodes[i] = node
 
   #build the NIC
-  nic = node.setSubComponent("nic", "macro.snappr_nic")
-  nic.addParams(dict(
-    mtu=mtu,
-    bandwidth=nic_bandwidth,
-    latency=nic_latency,
-    credits="8KB",
-    negligible_size=0,
- ))
+  nic = node.setSubComponent("nic", "macro.SnapprNIC")
 
-  inj_port = nic.setSubComponent("outport", "macro.snappr_outport")
-  inj_port.addParams(dict(
-    bandwidth=nic_bandwidth,
-    latency=link_latency,
-    credits="8KB",
-    mtu=mtu
-  ))
-
+  nic.setSubComponent("outport", "macro.SnapprOutPort")
 
   #build the memory system
-  mem = node.setSubComponent("memory", "macro.snappr_memory")
-  mem.addParams(dict(
-    channel_bandwidth="1.0GB/s",
-    num_channels=8
-  ))
+  node.setSubComponent("memory", "macro.snappr_memory")
 
 sideX = 0.5
 sideY = 0.5
@@ -83,37 +80,23 @@ for i in range(num_switches):
   connections = system.switchConnections(i)
   switch = switches[i]
   switch_geometry = system.switchGeometry(i)
-  print("switchConnections: ", connections)
-  print("switch_geometry: ", switch_geometry)
-  p = 0;
   for src_id, dst_id, src_outport, dst_inport in connections:
-      stat_params = dict(
-        origin=[1, 1 + p, 1],
-        size=[sideX, sideY, sideZ],
-        shape="line",
-        type="sst.IntensityStatistic",
-      )
-      port = switch.setSubComponent("outport%d" % src_outport, "macro.snappr_outport")
-      port.enableStatistics(["traffic_intensity"], stat_params)
-      port.addParams(dict(
-        bandwidth=link_bandwidth,
-        latency=link_latency,
-        mtu=mtu
-      ))
-
       link_name = "network%d:%d->%d:%d" % (src_id,src_outport,dst_id,dst_inport)
       link = sst.Link(link_name)
       port_name = "output%d" % (src_outport)
       switch.addLink(link,port_name,link_latency)
-      print("Connect %s on switch %d" % (port_name,i))
-
       dst_switch = switches[dst_id]
       port_name = "input%d" % (dst_inport)
       dst_switch.addLink(link,port_name,link_latency)
 
+first_ej_port = -1
+print("Connecting endpoints")
 for sw_id in range(num_switches):
   connections = system.ejectionConnections(sw_id)
   for ep_id, switch_port, ej_port in connections:
+    if first_ej_port == -1:
+      first_ej_port = switch_port
+    first_ej_port = min(first_ej_port,switch_port)
     ep = nodes[ep_id]
     switch = switches[sw_id]
 
@@ -125,6 +108,7 @@ for sw_id in range(num_switches):
 
     port_name = "input%d" % (ej_port)
     ep.addLink(link,port_name,link_latency)
+    switch.setSubComponent("outport%d" % switch_port, "macro.SnapprOutPort")
 
   connections = system.ejectionConnections(sw_id)
   for ep_id, switch_port, inj_port, in connections:
@@ -139,6 +123,24 @@ for sw_id in range(num_switches):
 
     port_name = "output%d" % (ej_port)
     ep.addLink(link,port_name,link_latency)
+    
+    ep.setSubComponent("outport%d" % ej_port, "macro.SnapprOutPort")
+
+# have to do it this way because every slot gets a subcomponent,
+# but not every port gets a link
+for sw_id in range(num_switches):
+  switch = switches[sw_id]
+  p = 0;
+  for j in range(0,first_ej_port):
+      stat_params = dict(
+        origin=[1, 1 + p, 1],
+        size=[sideX, sideY, sideZ],
+        shape="line",
+        type="sst.IntensityStatistic",
+      )
+      p = p + 1
+      port = switch.setSubComponent("outport%d" % j, "macro.SnapprOutPort")
+      port.enableStatistics(["traffic_intensity"], stat_params)
 
 nproc = sst.getMPIRankCount() * sst.getThreadCount()
 logp_switches = [None]*nproc

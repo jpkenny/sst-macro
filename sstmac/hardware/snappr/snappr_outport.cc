@@ -100,6 +100,7 @@ SnapprOutPort::SnapprOutPort(SST::ComponentId_t id, SST::Params& params,
 #else
   std::cout << "registerMultiStatistic "<< getName() << " "<< isAnonymous() << " "<< isUser() << std::endl;
   intensity = registerMultiStatistic<uint64_t, double>(params, "traffic_intensity", subId);
+  std::cout << "intensity: " << intensity << std::endl;
 #endif
   ftq_idle_state = FTQTag::allocateCategoryId("idle:" + portName);
   ftq_active_state = FTQTag::allocateCategoryId("active:" + portName);
@@ -304,7 +305,7 @@ SnapprOutPort::arbitrate()
   arbitration_scheduled = false;
   if (ready()){
     if (intensity){
-        std::cout << "SnapprOutPort:: arbitrate intensity" << std::endl;
+        //std::cout << "SnapprOutPort:: arbitrate intensity" << std::endl;
       intensity->addData(parent_->now().usec(), queueLength());
     }
     logQueueDepth();
