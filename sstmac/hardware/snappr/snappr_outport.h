@@ -114,7 +114,7 @@ struct SnapprOutPort : public SubComponent {
     SnapprOutPort,
     SnapprOutPort,
     "macro",
-    "snappr",
+    "SnapprOutPort",
     SST_ELI_ELEMENT_VERSION(1,0,0),
     "implements a basic Snappr OutPort")
 #endif
@@ -150,8 +150,13 @@ struct SnapprOutPort : public SubComponent {
   SST::Statistics::Statistic<uint64_t>* xmit_idle;
   SST::Statistics::Statistic<uint64_t>* bytes_sent;
 
+#if SSTMAC_INTEGRATED_SST_CORE
   static constexpr int intensity_stalled = 100;
   MultiStatistic<uint64_t, double>* intensity;
+#else
+  const int intensity_stalled = 100;
+  SST::Statistics::MultiStatistic<uint64_t, double>* intensity;
+#endif
 
   sstmac::FTQCalendar* state_ftq;
   sstmac::FTQCalendar* queue_depth_ftq;

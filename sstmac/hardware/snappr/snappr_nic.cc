@@ -84,7 +84,6 @@ SnapprNIC::SnapprNIC(uint32_t id, SST::Params& params, Node* parent) :
   //configure for a single port for now
   int num_ports = 1;
   outports_.resize(num_ports);
-  //std::string arbtype = inj_params.find<std::string>("arbitrator", "fifo");
   qos_levels_ = params.find<int>("qos_levels", 1);
   rdma_get_req_qos_ = params.find<int>("rdma_get_qos", -1);
   flow_control_ = params.find<bool>("flow_control", true);
@@ -124,11 +123,20 @@ SnapprNIC::SnapprNIC(uint32_t id, SST::Params& params, Node* parent) :
   inj_byte_delay_ = TimeDelta(params.find<SST::UnitAlgebra>("bandwidth").getValue().inverse().toDouble());
   for (int i=0; i < num_ports; ++i){
     std::string subId = sprockit::sprintf("NIC%d:%d", addr(), i);
+#if SSTMAC_INTEGRATED_SST_CORE
     outports_[i] = loadSub<SnapprOutPort>("outport" + std::to_string(i), "SnapprOutPort", i, inj_params,
                                           subId, "NIC_send", i,
                                           true/*always need congestion on NIC*/,
                                           flow_control_,  NIC::parent(),
                                           vls_per_qos);
+#else
+    std::string arbtype = inj_params.find<std::string>("arbitrator", "fifo");
+    outports_[i] = loadSub<SnapprOutPort>("SnapprOutPort", "SnapprOutPort", i, inj_params,
+                                             subId, "NIC_send", i,
+                                             true/*always need congestion on NIC*/,
+                                             flow_control_,  NIC::parent(),
+                                             vls_per_qos);
+#endif
     outports_[i]->setVirtualLanes(credits_per_qos);
     outports_[i]->addTailNotifier(this, &SnapprNIC::handleTailPacket);
   }

@@ -174,10 +174,18 @@ SnapprSwitch::SnapprSwitch(uint32_t id, SST::Params& params) :
   for (int i=0; i < top_->maxNumPorts(); ++i){
     std::string subId = sprockit::sprintf("Switch:%d.Port:%d", addr(), i);
     std::string portName = top_->portTypeName(addr(), i);
+#if SSTMAC_INTEGRATED_SST_CORE
     outports_[i] = loadSub<SnapprOutPort>("outport" + std::to_string(i), "SnapprOutPort", i, link_params,
                                           subId, portName, i,
                                           congestion, flow_control, this,
                                           vls_per_qos);
+#else
+    outports_[i] = loadSub<SnapprOutPort>("SnapprOutPort", "SnapprOutPort", i, link_params,
+                                          subId, portName, i,
+                                          congestion, flow_control, this,
+                                          vls_per_qos);
+#endif
+
     outports_[i]->setVirtualLanes(credits_per_vl);
     outports_[i]->inports = inports_.data();
   }

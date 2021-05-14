@@ -66,6 +66,8 @@ Questions? Contact sst-macro-help@sandia.gov
 
 #else
 
+#include <stdint.h>
+
 #define SST_ELI_DECLARE_BASE(x) \
   SPKT_DECLARE_BASE(x)
 
