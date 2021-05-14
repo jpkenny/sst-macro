@@ -175,12 +175,12 @@ SnapprSwitch::SnapprSwitch(uint32_t id, SST::Params& params) :
     std::string subId = sprockit::sprintf("Switch:%d.Port:%d", addr(), i);
     std::string portName = top_->portTypeName(addr(), i);
 #if SSTMAC_INTEGRATED_SST_CORE
-    outports_[i] = loadSub<SnapprOutPort>("outport" + std::to_string(i), "SnapprOutPort", i, link_params,
+    outports_[i] = loadSub<SnapprOutPort>("outport" + std::to_string(i), "snappr_outport", i, link_params,
                                           subId, portName, i,
                                           congestion, flow_control, this,
                                           vls_per_qos);
 #else
-    outports_[i] = loadSub<SnapprOutPort>("SnapprOutPort", "SnapprOutPort", i, link_params,
+    outports_[i] = loadSub<SnapprOutPort>("snappr_outport", "snappr_outport", i, link_params,
                                           subId, portName, i,
                                           congestion, flow_control, this,
                                           vls_per_qos);

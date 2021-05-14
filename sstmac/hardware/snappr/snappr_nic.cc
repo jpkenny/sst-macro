@@ -124,18 +124,17 @@ SnapprNIC::SnapprNIC(uint32_t id, SST::Params& params, Node* parent) :
   for (int i=0; i < num_ports; ++i){
     std::string subId = sprockit::sprintf("NIC%d:%d", addr(), i);
 #if SSTMAC_INTEGRATED_SST_CORE
-    outports_[i] = loadSub<SnapprOutPort>("outport" + std::to_string(i), "SnapprOutPort", i, inj_params,
+    outports_[i] = loadSub<SnapprOutPort>("outport" + std::to_string(i), "snappr_outport", i, inj_params,
                                           subId, "NIC_send", i,
                                           true/*always need congestion on NIC*/,
                                           flow_control_,  NIC::parent(),
                                           vls_per_qos);
 #else
-    std::string arbtype = inj_params.find<std::string>("arbitrator", "fifo");
-    outports_[i] = loadSub<SnapprOutPort>("SnapprOutPort", "SnapprOutPort", i, inj_params,
-                                             subId, "NIC_send", i,
-                                             true/*always need congestion on NIC*/,
-                                             flow_control_,  NIC::parent(),
-                                             vls_per_qos);
+    outports_[i] = loadSub<SnapprOutPort>("snappr_outport", "snappr_outport", i, inj_params,
+                                          subId, "NIC_send", i,
+                                          true/*always need congestion on NIC*/,
+                                          flow_control_,  NIC::parent(),
+                                          vls_per_qos);
 #endif
     outports_[i]->setVirtualLanes(credits_per_qos);
     outports_[i]->addTailNotifier(this, &SnapprNIC::handleTailPacket);

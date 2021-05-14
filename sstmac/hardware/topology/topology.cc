@@ -159,11 +159,7 @@ Topology::staticTopology(SST::Params& params)
 
     if (name.empty()){
 //      spkt_abort_printf("no topology.name parameter in namespace");
-    }
-    for(auto key : top_params.getKeys()) {
-        std::cout << "key: " << key  << std::endl;
-
-    }
+      }
     staticTopology_ = sprockit::create<Topology>("macro", name, top_params);
   }
   return staticTopology_;

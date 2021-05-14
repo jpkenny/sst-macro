@@ -67,7 +67,7 @@ for i in range(num_nodes):
   #build the NIC
   nic = node.setSubComponent("nic", "macro.SnapprNIC")
 
-  nic.setSubComponent("outport", "macro.SnapprOutPort")
+  nic.setSubComponent("outport", "macro.snappr_outport")
 
   #build the memory system
   node.setSubComponent("memory", "macro.snappr_memory")
@@ -108,7 +108,7 @@ for sw_id in range(num_switches):
 
     port_name = "input%d" % (ej_port)
     ep.addLink(link,port_name,link_latency)
-    switch.setSubComponent("outport%d" % switch_port, "macro.SnapprOutPort")
+    switch.setSubComponent("outport%d" % switch_port, "macro.snappr_outport")
 
   connections = system.ejectionConnections(sw_id)
   for ep_id, switch_port, inj_port, in connections:
@@ -124,7 +124,7 @@ for sw_id in range(num_switches):
     port_name = "output%d" % (ej_port)
     ep.addLink(link,port_name,link_latency)
     
-    ep.setSubComponent("outport%d" % ej_port, "macro.SnapprOutPort")
+    ep.setSubComponent("outport%d" % ej_port, "macro.snappr_outport")
 
 # have to do it this way because every slot gets a subcomponent,
 # but not every port gets a link
@@ -139,7 +139,7 @@ for sw_id in range(num_switches):
         type="sst.IntensityStatistic",
       )
       p = p + 1
-      port = switch.setSubComponent("outport%d" % j, "macro.SnapprOutPort")
+      port = switch.setSubComponent("outport%d" % j, "macro.snappr_outport")
       port.enableStatistics(["traffic_intensity"], stat_params)
 
 nproc = sst.getMPIRankCount() * sst.getThreadCount()

@@ -99,7 +99,6 @@ Node::Node(uint32_t id, SST::Params& params)
     init_debug = true;
   }
 #endif
-  params.print_all_params(std::cout);
   my_addr_ = params.find<int>("id");
   next_outgoing_id_.setSrcNode(my_addr_);
 
@@ -107,7 +106,6 @@ Node::Node(uint32_t id, SST::Params& params)
   auto nic_name = nic_params.find<std::string>("name");
 
   SST::Params mem_params = params.find_scoped_params("memory");
-  mem_params.print_all_params(std::cout);
   auto mem_name = mem_params.find<std::string>("name");
   //mem_model_ = loadSub<MemoryModel>(mem_name, "memory", MEMORY_SLOT, mem_params, this);
   mem_model_ = loadSub<MemoryModel>(mem_name, "memory", MEMORY_SLOT, mem_params, this);
