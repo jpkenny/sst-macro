@@ -46,7 +46,7 @@ for i in range(num_nodes):
   node.addParams({
     "proc.frequency" : "2GHz",
     "app1.name" : "mpi_ping_all",
-    "app1.launch_cmd" : "aprun -n 4 -N 1",
+    "app1.launch_cmd" : "aprun -n 8 -N 1",
     "id" : i,
     "app1.message_size" : "20KB",
     "memory.name" : "snappr",
@@ -72,6 +72,7 @@ for i in range(num_nodes):
   #build the memory system
   node.setSubComponent("memory", "macro.snappr_memory")
 
+p = 0;
 sideX = 0.5
 sideY = 0.5
 sideZ = 0.5
@@ -108,7 +109,10 @@ for sw_id in range(num_switches):
 
     port_name = "input%d" % (ej_port)
     ep.addLink(link,port_name,link_latency)
-    switch.setSubComponent("outport%d" % switch_port, "macro.snappr_outport")
+    sc = switch.setSubComponent("outport%d" % switch_port, "macro.snappr_outport")
+    p = p + 1
+    sc.enableStatistic("traffic_intensity",
+        {"type": "sst.IntensityStatistic", "origin": [1, p, 1], "size": [sideX, sideY, sideZ], "shape": "line"})
 
   connections = system.ejectionConnections(sw_id)
   for ep_id, switch_port, inj_port, in connections:
@@ -124,23 +128,21 @@ for sw_id in range(num_switches):
     port_name = "output%d" % (ej_port)
     ep.addLink(link,port_name,link_latency)
     
-    ep.setSubComponent("outport%d" % ej_port, "macro.snappr_outport")
+    sc = ep.setSubComponent("outport%d" % ej_port, "macro.snappr_outport")
+    p = p + 1
+    sc.enableStatistic("traffic_intensity",
+        {"type": "sst.IntensityStatistic", "origin": [1, p, 1], "size": [sideX, sideY, sideZ], "shape": "line"})
+
 
 # have to do it this way because every slot gets a subcomponent,
 # but not every port gets a link
 for sw_id in range(num_switches):
   switch = switches[sw_id]
-  p = 0;
-  for j in range(0,first_ej_port):
-      stat_params = dict(
-        origin=[1, 1 + p, 1],
-        size=[sideX, sideY, sideZ],
-        shape="line",
-        type="sst.IntensityStatistic",
-      )
-      p = p + 1
-      port = switch.setSubComponent("outport%d" % j, "macro.snappr_outport")
-      port.enableStatistics(["traffic_intensity"], stat_params)
+  for j in range(0,first_ej_port):   
+    port = switch.setSubComponent("outport%d" % j, "macro.snappr_outport")
+    p = p + 1
+    port.enableStatistic("traffic_intensity",
+                         {"type": "sst.IntensityStatistic", "origin": [1, p, 1], "size": [sideX, sideY, sideZ], "shape": "line"})
 
 nproc = sst.getMPIRankCount() * sst.getThreadCount()
 logp_switches = [None]*nproc
