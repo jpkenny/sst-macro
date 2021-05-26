@@ -306,13 +306,20 @@ sys_get_switch_geometry(SystemPy_t *self, PyObject *idx)
 
   for (int p=0; p < geom.ports.size(); ++p){
     sstmac::hw::Topology::xyz port_xyz = geom.get_port_geometry(p).origin();
-    PyObject* portTuple = PyTuple_New(3);
+    sstmac::hw::Topology::xyz port_extent = geom.get_port_geometry(p).extent();
+    PyObject* portTuple = PyTuple_New(6);
     PyObject* portX = ConvertToPythonDouble(port_xyz.x);
     PyObject* portY = ConvertToPythonDouble(port_xyz.y);
     PyObject* portZ = ConvertToPythonDouble(port_xyz.z);
+    PyObject* extentX = ConvertToPythonDouble(port_extent.x);
+    PyObject* extentY = ConvertToPythonDouble(port_extent.y);
+    PyObject* extentZ = ConvertToPythonDouble(port_extent.z);
     PyTuple_SetItem(portTuple, 0, portX);
     PyTuple_SetItem(portTuple, 1, portY);
     PyTuple_SetItem(portTuple, 2, portZ);
+    PyTuple_SetItem(portTuple, 3, extentX);
+    PyTuple_SetItem(portTuple, 4, extentY);
+    PyTuple_SetItem(portTuple, 5, extentZ);
     PyTuple_SetItem(portsTuple, p, portTuple);
   }
 

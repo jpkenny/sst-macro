@@ -46,7 +46,7 @@ for i in range(num_nodes):
   node.addParams({
     "proc.frequency" : "2GHz",
     "app1.name" : "mpi_ping_all",
-    "app1.launch_cmd" : "aprun -n 8 -N 1",
+    "app1.launch_cmd" : "aprun -n 20 -N 1",
     "id" : i,
     "app1.message_size" : "20KB",
     "memory.name" : "snappr",
@@ -80,7 +80,6 @@ sideZ = 0.5
 for i in range(num_switches):
   connections = system.switchConnections(i)
   switch = switches[i]
-  switch_geometry = system.switchGeometry(i)
   for src_id, dst_id, src_outport, dst_inport in connections:
       link_name = "network%d:%d->%d:%d" % (src_id,src_outport,dst_id,dst_inport)
       link = sst.Link(link_name)
@@ -94,6 +93,7 @@ first_ej_port = -1
 print("Connecting endpoints")
 for sw_id in range(num_switches):
   connections = system.ejectionConnections(sw_id)
+  switch_geometry = system.switchGeometry(sw_id)
   for ep_id, switch_port, ej_port in connections:
     if first_ej_port == -1:
       first_ej_port = switch_port
@@ -111,8 +111,15 @@ for sw_id in range(num_switches):
     ep.addLink(link,port_name,link_latency)
     sc = switch.setSubComponent("outport%d" % switch_port, "macro.snappr_outport")
     p = p + 1
+    px = switch_geometry[2][switch_port][0]
+    py = switch_geometry[2][switch_port][1]
+    pz = switch_geometry[2][switch_port][2]
+    ex = switch_geometry[2][switch_port][3]
+    ey = switch_geometry[2][switch_port][4]
+    ez = switch_geometry[2][switch_port][5]
+
     sc.enableStatistic("traffic_intensity",
-        {"type": "sst.IntensityStatistic", "origin": [1, p, 1], "size": [sideX, sideY, sideZ], "shape": "line"})
+        {"type": "sst.IntensityStatistic", "origin": [px, py, pz], "size": [ex, ey, ez], "shape": "cube"})
 
   connections = system.ejectionConnections(sw_id)
   for ep_id, switch_port, inj_port, in connections:
@@ -130,19 +137,34 @@ for sw_id in range(num_switches):
     
     sc = ep.setSubComponent("outport%d" % ej_port, "macro.snappr_outport")
     p = p + 1
+    px = switch_geometry[2][ej_port][0]
+    py = switch_geometry[2][ej_port][1]
+    pz = switch_geometry[2][ej_port][2]
+    ex = switch_geometry[2][ej_port][3]
+    ey = switch_geometry[2][ej_port][4]
+    ez = switch_geometry[2][ej_port][5]
+
     sc.enableStatistic("traffic_intensity",
-        {"type": "sst.IntensityStatistic", "origin": [1, p, 1], "size": [sideX, sideY, sideZ], "shape": "line"})
+        {"type": "sst.IntensityStatistic", "origin": [px, py, pz], "size": [ex, ey, ez], "shape": "cube"})
 
 
 # have to do it this way because every slot gets a subcomponent,
 # but not every port gets a link
 for sw_id in range(num_switches):
   switch = switches[sw_id]
-  for j in range(0,first_ej_port):   
+  switch_geometry = system.switchGeometry(sw_id)
+  for j in range(0,first_ej_port):
     port = switch.setSubComponent("outport%d" % j, "macro.snappr_outport")
     p = p + 1
+    px = switch_geometry[2][j][0]
+    py = switch_geometry[2][j][1]
+    pz = switch_geometry[2][j][2]
+    ex = switch_geometry[2][j][3]
+    ey = switch_geometry[2][j][4]
+    ez = switch_geometry[2][j][5]
+
     port.enableStatistic("traffic_intensity",
-                         {"type": "sst.IntensityStatistic", "origin": [1, p, 1], "size": [sideX, sideY, sideZ], "shape": "line"})
+                         {"type": "sst.IntensityStatistic", "origin": [px, py, pz], "size": [ex, ey, ez], "shape": "cube"})
 
 nproc = sst.getMPIRankCount() * sst.getThreadCount()
 logp_switches = [None]*nproc
@@ -179,4 +201,3 @@ for i in range(num_nodes):
 
 sst.setStatisticLoadLevel(7)
 sst.setStatisticOutput("sst.vtkstatisticoutputexodus")
-sst.macro.debug("mpi")
