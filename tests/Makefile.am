@@ -39,6 +39,7 @@ NOOP = $(top_builddir)/tests/noop
 DIFF=diff -u
 if INTEGRATED_SST_CORE
 SSTMACEXEC = $(top_builddir)/bin/sstmac-check
+SSTPYTHON = @sst_prefix@/bin/sst
 else
 SSTMACEXEC = $(top_builddir)/bin/sstmac
 endif

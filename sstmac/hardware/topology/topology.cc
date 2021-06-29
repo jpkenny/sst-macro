@@ -151,7 +151,6 @@ Topology::staticTopology(SST::Params& params)
         top_params.insert("inter_group", "circulant");
         top_params.insert("concentration", "4");
     }
-    std::cout << "Topology::staticTopology" << top_params.size() << std::endl;
 #endif
     params.insert(top_params);
     std::string name = top_params.find<std::string>("name");

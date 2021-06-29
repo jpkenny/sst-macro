@@ -4,6 +4,7 @@
 
 CORE_TEST_DEPS = $(SSTMACEXEC)
 if INTEGRATED_SST_CORE
+CORE_TEST_DEPS += $(SSTPYTHON)
 CORE_TEST_DEPS += ../sstmac/install/libmacro.la
 endif
 
@@ -15,7 +16,8 @@ CORETESTS+= \
   test_core_apps_ping_all_torus_pisces_new \
   test_core_apps_ping_all_torus_pisces_ugal \
   test_core_apps_ping_all_torus_valiant \
-  test_core_apps_ping_all_hypercube
+  test_core_apps_ping_all_hypercube \
+  test_stats_traffic_intensity_snappr
 
 #  test_core_apps_ping_all_big_dfly_snappr \
 #  test_core_apps_ping_all_dfly_plus_qos \
@@ -37,6 +39,10 @@ test_core_apps_ping_all_dfly_plus_qo%.$(CHKSUF): $(SSTMACEXEC)
 test_core_apps_ping_%.$(CHKSUF): $(CORE_TEST_DEPS)
 	$(PYRUNTEST) 10 $(top_srcdir) $@ 't > 5 and t < 5.2' \
     $(MPI_LAUNCHER) $(SSTMACEXEC) -f $(srcdir)/test_configs/test_ping_$*.ini --no-wall-time $(THREAD_ARGS)
+
+test_stats_traffic_intensity_%.$(CHKSUF): $(CORE_TEST_DEPS)
+	$(PYRUNTEST) 2 $(top_srcdir) $@  't > 0.0001 and t > 0.001' \
+    $(MPI_LAUNCHER) $(SSTPYTHON) $(srcdir)/test_configs/test_stats_traffic_intensity_$*.py  $(THREAD_ARGS)
 
 	
 
