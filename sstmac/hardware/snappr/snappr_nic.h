@@ -71,6 +71,11 @@ class SnapprNIC :
     SST_ELI_ELEMENT_VERSION(1,0,0),
     "A NIC implementing the snappr model",
     sstmac::hw::NIC)
+
+// %()d doesn't work for subcomponent slots!
+//  SST_ELI_DOCUMENT_SUBCOMPONENT_SLOTS(
+//      {"outport%(num_ports)d", "The injection output port for the NIC", "sstmac::SnapprOutport"},
+//  )
 #else
   SST_ELI_REGISTER_DERIVED(
     NIC,

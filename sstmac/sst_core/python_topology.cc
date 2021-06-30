@@ -52,6 +52,7 @@ Questions? Contact sst-macro-help@sandia.gov
 #if PY_MAJOR_VERSION >= 3
  #define PY_OBJ_HEAD PyVarObject_HEAD_INIT(nullptr, 0)
  #define ConvertToPythonLong(x) PyLong_FromLong(x)
+ #define ConvertToPythonDouble(x) PyFloat_FromDouble(x)
  #define ConvertToCppLong(x) PyLong_AsLong(x)
  #define ConvertToPythonString(x) PyUnicode_FromString(x)
  #define ConvertToCppString(x) PyUnicode_AsUTF8(x)
@@ -74,6 +75,7 @@ Questions? Contact sst-macro-help@sandia.gov
  #define Py_TYPE(ob) (((PyObject*)(ob))->ob_type)
  #define PY_OBJ_HEAD PyVarObject_HEAD_INIT(nullptr, 0)
  #define ConvertToPythonLong(x) PyInt_FromLong(x)
+ #define ConvertToPythonDouble(x) PyFloat_FromDouble(x)
  #define ConvertToCppLong(x) PyInt_AsLong(x)
  #define ConvertToPythonString(x) PyString_FromString(x)
  #define ConvertToCppString(x) PyString_AsString(x)
@@ -122,6 +124,19 @@ sys_get_switch_connections(SystemPy_t* self, PyObject* idx);
 static PyObject*
 sys_get_ejection_connections(SystemPy_t* self, PyObject* idx);
 
+/**
+ * @brief sys_get_switch_geometry
+ * @param self
+ * @param idx
+ * @return A 2-tuple with first element the switch geometry and second element
+ *         a list of port geometries.  The swtich geometry is a 2-tuple
+ *         with first element the origin and second element the size.
+ *         The origin and size are given as a 3-tuple of x,y,z.
+ *         The port geometry is the location of the port (just an origin).
+ */
+static PyObject*
+sys_get_switch_geometry(SystemPy_t* self, PyObject* idx);
+
 static PyObject*
 sys_nodeToLogpSwitch(SystemPy_t* self, PyObject* idx);
 
@@ -135,6 +150,9 @@ static PyMethodDef system_methods[] = {
   { "nodeToLogPSwitch",
     (PyCFunction)sys_nodeToLogpSwitch, METH_O,
       "map a node id to its corresponding LogP switch" },
+  { "switchGeometry",
+    (PyCFunction)sys_get_switch_geometry, METH_O,
+      "get the geometry of a switch with its ports" },
   { "isLogP",
     (PyCFunction)sys_is_logp, METH_NOARGS,
       "return whether to do simple LogP build" },
@@ -259,6 +277,58 @@ sys_convert_to_list(const std::vector<sstmac::hw::Topology::InjectionPort>& port
 }
 
 static PyObject*
+sys_get_switch_geometry(SystemPy_t *self, PyObject *idx)
+{
+  SwitchId sid = (SwitchId) ConvertToCppLong(idx);
+  sstmac::hw::Topology::SwitchGeometry geom = self->macro_topology->getGeometry(sid);
+
+  sstmac::hw::Topology::xyz origin = geom.box.origin();
+  sstmac::hw::Topology::xyz extent = geom.box.extent();
+  PyObject* geomTuple = PyTuple_New(3);
+  PyObject* geomOriginTuple = PyTuple_New(3);
+  PyObject* geomExtentTuple = PyTuple_New(3);
+  PyObject* originX = ConvertToPythonDouble(origin.x);
+  PyObject* originY = ConvertToPythonDouble(origin.y);
+  PyObject* originZ = ConvertToPythonDouble(origin.z);
+  PyObject* extentX = ConvertToPythonDouble(extent.x);
+  PyObject* extentY = ConvertToPythonDouble(extent.y);
+  PyObject* extentZ = ConvertToPythonDouble(extent.z);
+  PyTuple_SetItem(geomOriginTuple, 0, originX);
+  PyTuple_SetItem(geomOriginTuple, 1, originY);
+  PyTuple_SetItem(geomOriginTuple, 2, originZ);
+  PyTuple_SetItem(geomExtentTuple, 0, extentX);
+  PyTuple_SetItem(geomExtentTuple, 1, extentY);
+  PyTuple_SetItem(geomExtentTuple, 2, extentZ);
+  PyTuple_SetItem(geomTuple, 0, geomOriginTuple);
+  PyTuple_SetItem(geomTuple, 1, geomExtentTuple);
+
+  PyObject* portsTuple = PyTuple_New(geom.ports.size());
+
+  for (int p=0; p < geom.ports.size(); ++p){
+    sstmac::hw::Topology::xyz port_xyz = geom.get_port_geometry(p).origin();
+    sstmac::hw::Topology::xyz port_extent = geom.get_port_geometry(p).extent();
+    PyObject* portTuple = PyTuple_New(6);
+    PyObject* portX = ConvertToPythonDouble(port_xyz.x);
+    PyObject* portY = ConvertToPythonDouble(port_xyz.y);
+    PyObject* portZ = ConvertToPythonDouble(port_xyz.z);
+    PyObject* extentX = ConvertToPythonDouble(port_extent.x);
+    PyObject* extentY = ConvertToPythonDouble(port_extent.y);
+    PyObject* extentZ = ConvertToPythonDouble(port_extent.z);
+    PyTuple_SetItem(portTuple, 0, portX);
+    PyTuple_SetItem(portTuple, 1, portY);
+    PyTuple_SetItem(portTuple, 2, portZ);
+    PyTuple_SetItem(portTuple, 3, extentX);
+    PyTuple_SetItem(portTuple, 4, extentY);
+    PyTuple_SetItem(portTuple, 5, extentZ);
+    PyTuple_SetItem(portsTuple, p, portTuple);
+  }
+
+  PyTuple_SetItem(geomTuple, 2, portsTuple);
+
+  return geomTuple;
+}
+
+static PyObject*
 sys_get_injection_connections(SystemPy_t* self, PyObject* swIdx)
 {
   /** downcast, index guaranteed to fit 32-bit */
@@ -340,15 +410,26 @@ sys_init(SystemPy_t* self, PyObject* args, PyObject* kwargs)
     sstmac::py_extract_params(kwargs, params);
   }
 
-  sprockit::SimParameters::ptr sw_params = params->getNamespace("switch");
-  std::string model_name = sw_params->getParam("name");
-  std::transform(model_name.begin(), model_name.end(), model_name.begin(), ::tolower);
-  self->logp = model_name == "logp";
+  //we have new and old style params to deal with, which gets messy
 
-  sprockit::SimParameters::ptr top_params = params->getNamespace("topology");
   SST::Params sst_params;
-  for (auto it=top_params->begin(); it != top_params->end(); ++it){
-    sst_params.insert("topology." + it->first, it->second.value);
+  if (params->hasNamespace("switch") && params->hasNamespace("topology")){
+    //old style from ini file
+    sprockit::SimParameters::ptr sw_params = params->getNamespace("switch");
+    std::string model_name = sw_params->getParam("name");
+    std::transform(model_name.begin(), model_name.end(), model_name.begin(), ::tolower);
+    self->logp = model_name == "logp";
+
+    sprockit::SimParameters::ptr top_params = params->getNamespace("topology");
+    for (auto it=top_params->begin(); it != top_params->end(); ++it){
+      sst_params.insert("topology." + it->first, it->second.value);
+    }
+  } else {
+    self->logp = false;
+    //new style directly from python file
+    for (auto it=params->begin(); it != params->end(); ++it){
+      sst_params.insert("topology." + it->first, it->second.value);
+    }
   }
 
   self->macro_topology = sstmac::hw::Topology::staticTopology(sst_params);

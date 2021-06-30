@@ -60,19 +60,10 @@ Questions? Contact sst-macro-help@sandia.gov
 
 MakeDebugSlot(logp)
 
-RegisterKeywords(
- { "bandwidth", "" },
- { "hop_latency", "" },
- { "out_in_latency", "" },
- { "random_seed", "a seed for creating randomized message arrivals"},
- { "random_max_extra_latency", "the maximum extra latency allowed in random scenarios"},
- { "random_max_extra_byte_delay", "the maximum extra delay per byte in random scenarios"},
-);
-
 namespace sstmac {
 namespace hw {
 
-LogPSwitch::LogPSwitch(uint32_t cid, SST::Params& params) :
+LogPSwitch::LogPSwitch(SST::ComponentId_t cid, SST::Params& params) :
   ConnectableComponent(cid, params),
   rng_(nullptr), contention_model_(nullptr)
 {
@@ -101,7 +92,11 @@ LogPSwitch::LogPSwitch(uint32_t cid, SST::Params& params) :
 
   nic_links_.resize(top_->numNodes());
 
-  initLinks(params);
+  for (int i=0; i < top_->numNodes(); ++i){
+    initOutputLink(i, hw::NIC::LogP);
+    initInputLink(hw::NIC::LogP, i);
+  }
+
 }
 
 LogPSwitch::~LogPSwitch()

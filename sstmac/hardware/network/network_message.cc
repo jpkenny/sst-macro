@@ -50,6 +50,9 @@ Questions? Contact sst-macro-help@sandia.gov
 namespace sstmac {
 namespace hw {
 
+
+constexpr uintptr_t NetworkMessage::bad_recv_buffer;
+
 NetworkMessage::~NetworkMessage()
 {
   if (wire_buffer_){
@@ -85,7 +88,8 @@ NetworkMessage::putOnWire()
     case rdma_put_payload:
       putBufferOnWire(local_buffer_, payload_bytes_);
       break;
-    case payload:
+    case smsg_send:
+    case posted_send:
       putBufferOnWire(smsg_buffer_, byteLength());
       smsg_buffer_ = nullptr;
       break;
@@ -123,7 +127,8 @@ NetworkMessage::takeOffWire()
     case rdma_put_payload:
       takeBufferOffWire(remote_buffer_, payload_bytes_);
       break;
-    case payload:
+    case smsg_send:
+    case posted_send:
       smsg_buffer_ = wire_buffer_;
       wire_buffer_ = nullptr;
       break;
@@ -142,7 +147,8 @@ NetworkMessage::intranodeMemmove()
     case rdma_put_payload:
       memmoveLocalToRemote();
       break;
-    case payload:
+    case smsg_send:
+    case posted_send:
       putBufferOnWire(smsg_buffer_, byteLength());
       smsg_buffer_ = wire_buffer_;
       wire_buffer_ = nullptr;
@@ -172,6 +178,25 @@ NetworkMessage::memmoveRemoteToLocal()
   }
 }
 
+void
+NetworkMessage::matchRecv(void *recv_buffer)
+{
+  if (recv_buffer && local_buffer_){
+    ::memcpy(recv_buffer, local_buffer_, payload_bytes_);
+    delete[] (char*) local_buffer_;
+  }
+  local_buffer_ = recv_buffer;
+}
+
+void
+NetworkMessage::setNoRecvMatch()
+{
+  if (local_buffer_){
+    delete[] (char*) local_buffer_;
+  }
+  local_buffer_ = (void*) bad_recv_buffer;
+}
+
 
 void
 NetworkMessage::convertToAck()
@@ -185,7 +210,8 @@ NetworkMessage::convertToAck()
     case rdma_put_payload:
       type_ = rdma_put_sent_ack;
       break;
-    case payload:
+    case smsg_send:
+    case posted_send:
       type_ = payload_sent_ack;
       break;
     default:
@@ -224,7 +250,8 @@ NetworkMessage::tostr(type_t ty)
 {
   switch(ty)
   {
-      enumcase(payload);
+      enumcase(smsg_send);
+      enumcase(posted_send);
       enumcase(payload_sent_ack);
       enumcase(rdma_get_request);
       enumcase(rdma_get_payload);
@@ -247,15 +274,19 @@ void
 NetworkMessage::serialize_order(serializer& ser)
 {
   Flow::serialize_order(ser);
-  ser & time_started_;
-  ser & injection_started_;
   ser & aid_;
-  ser & qos_;
   ser & needs_ack_;
+  ser & payload_bytes_;
   ser & toaddr_;
   ser & fromaddr_;
   ser & type_;
   ser & qos_;
+  ser & qos_;
+  ser & time_started_;
+  ser & injection_started_;
+  ser & injection_delay_;
+  ser & min_delay_;
+  ser & congestion_delay_;
   if (type_ == null_netmsg_type){
     spkt_abort_printf("failed serializing network message - got null type");
   }
@@ -264,7 +295,6 @@ NetworkMessage::serialize_order(serializer& ser)
   ser.primitive(smsg_buffer_);
   ser & sstmac::array(wire_buffer_, payload_bytes_);
   //this has to go here, weirdness with sstmac::array
-  ser & payload_bytes_;
 }
 
 #if !SSTMAC_INTEGRATED_SST_CORE
@@ -302,7 +332,8 @@ NetworkMessage::isMetadata() const
     case failure_notification:
     case null_netmsg_type:
       return true;
-    case payload:
+    case smsg_send:
+    case posted_send:
     case rdma_get_payload:
     case nvram_get_payload:
     case rdma_put_payload:

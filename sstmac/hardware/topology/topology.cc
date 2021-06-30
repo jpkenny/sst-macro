@@ -120,6 +120,18 @@ Topology::Topology(SST::Params& params)
   if (params.contains("dump_file")){
     dump_file_ = params.find<std::string>("dump_file");
   }
+
+  if (params.contains("routing_tables")){
+    std::string router_fname = params.find<std::string>("routing_tables");
+    std::ifstream rin(router_fname);
+    nlohmann::json rtr_jsn;
+    try {
+      rin >> rtr_jsn;
+    } catch (nlohmann::detail::exception& e) {
+      spkt_abort_printf("failed parsing json file %s", router_fname.c_str());
+    }
+    routing_tables_ = rtr_jsn.at("switches");
+  }
 }
 
 Topology::~Topology()
@@ -131,10 +143,22 @@ Topology::staticTopology(SST::Params& params)
 {
   if (!staticTopology_){
     SST::Params top_params = params.find_scoped_params("topology");
-    std::string name = top_params.find<std::string>("name");
-    if (name.empty()){
-      spkt_abort_printf("no topology.name parameter in namespace");
+#if SSTMAC_INTEGRATED_SST_CORE
+    if(top_params.size() == 0) {
+        top_params.insert("name", "dragonfly");
+        top_params.insert("geometry", "[4,3]");
+        top_params.insert("h", "6");
+        top_params.insert("inter_group", "circulant");
+        top_params.insert("concentration", "4");
     }
+#endif
+    params.insert(top_params);
+    std::string name = top_params.find<std::string>("name");
+
+
+    if (name.empty()){
+//      spkt_abort_printf("no topology.name parameter in namespace");
+      }
     staticTopology_ = sprockit::create<Topology>("macro", name, top_params);
   }
   return staticTopology_;
@@ -192,7 +216,7 @@ Topology::outputGraphviz(const std::string& path)
 
 void
 Topology::outputBox(std::ostream& os,
-                     const Topology::VTKBoxGeometry& box)
+                     const Topology::BoxGeometry& box)
 {
   os << box.vertex(0);
   for (int i=1; i < 8; ++i){
@@ -202,7 +226,7 @@ Topology::outputBox(std::ostream& os,
 
 void
 Topology::outputBox(std::ostream& os,
-                     const Topology::VTKBoxGeometry& box,
+                     const Topology::BoxGeometry& box,
                      const std::string& color,
                      const std::string& alpha)
 {
@@ -222,7 +246,7 @@ Topology::outputXYZ(const std::string& path)
   std::ofstream out(output);
 
   for (int sid=0; sid < nsw; ++sid){
-    VTKSwitchGeometry geom = getVtkGeometry(sid);
+    SwitchGeometry geom = getGeometry(sid);
     outputBox(out, geom.box, "gray", "0.1"); //very transparent
     out << "\n";
   }
@@ -273,12 +297,12 @@ Topology::label(uint32_t comp_id) const
   }
 }
 
-Topology::VTKSwitchGeometry
-Topology::getVtkGeometry(SwitchId  /*sid*/) const
+Topology::SwitchGeometry
+Topology::getGeometry(SwitchId  /*sid*/) const
 {
-  spkt_abort_printf("unimplemented: topology::getVtkGeometry for %s",
+  spkt_abort_printf("unimplemented: topology::getGeometry for %s",
                     toString().c_str());
-  return VTKSwitchGeometry(0,0,0,0,0,0,0,std::vector<VTKSwitchGeometry::port_geometry>());
+  return SwitchGeometry(0,0,0,0,0,0,0,std::vector<SwitchGeometry::port_geometry>());
 }
 
 std::string
@@ -331,6 +355,20 @@ void
 Topology::portConfigDump(const std::string & /*dumpFile*/)
 {
   spkt_abort_printf("Topology chosen does not support port dump");
+}
+
+void
+Topology::injectionPorts(NodeId nid, std::vector<InjectionPort>& node_ports)
+{
+  node_ports.clear();
+  SwitchId sid = endpointToSwitch(nid);
+  std::vector<InjectionPort> switch_ports;
+  endpointsConnectedToEjectionSwitch(sid, switch_ports);
+  for (InjectionPort& switch_port : switch_ports){
+    if (switch_port.nid == nid){
+      node_ports.push_back(switch_port);
+    }
+  }
 }
 
 class MerlinTopology : public Topology {

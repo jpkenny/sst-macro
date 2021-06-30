@@ -56,9 +56,8 @@ Questions? Contact sst-macro-help@sandia.gov
 #include <sst/core/eli/elibase.h>
 
 #define SSTMAC_VALID_PORTS \
-   {"input %(out)d %(in)d",  "Will receive new payloads here",      {}}, \
-   {"output %(out)d %(in)d", "Will receive new acks(credits) here", {}}, \
-   {"in-out %(out)d %(in)d", "Will send/recv payloads here",        {}}, \
+   {"input%(in)d",  "Will receive new payloads here",      {}}, \
+   {"output%(out)d", "Will receive new acks(credits) here", {}}, \
    {"rtr",                   "Special link to Merlin router",       {}}
 
 
@@ -66,6 +65,8 @@ Questions? Contact sst-macro-help@sandia.gov
   SST_ELI_REGISTER_COMPONENT(cls,lib,name,ELI_FORWARD_AS_ONE(version),desc,cat)
 
 #else
+
+#include <stdint.h>
 
 #define SST_ELI_DECLARE_BASE(x) \
   SPKT_DECLARE_BASE(x)
@@ -79,6 +80,8 @@ Questions? Contact sst-macro-help@sandia.gov
 #define SST_ELI_DECLARE_DEFAULT_INFO()
 
 #define SST_ELI_DOCUMENT_STATISTICS(...)
+
+#define SST_ELI_DOCUMENT_SUBCOMPONENT_SLOTS(...)
 
 #define SST_ELI_ELEMENT_VERSION(...)
 
@@ -98,6 +101,10 @@ Questions? Contact sst-macro-help@sandia.gov
 #define COMPONENT_CATEGORY_MEMORY         0x02
 #define COMPONENT_CATEGORY_NETWORK        0x04
 #define COMPONENT_CATEGORY_SYSTEM         0x08
+
+namespace SST {
+using ComponentId_t = uint32_t;
+}
 #endif
 
 #endif /* SSTMAC_MICRO_INTEGRATED_COMPONENT_H_ */

@@ -43,9 +43,9 @@ def makeUniLink(linkType,srcComp,srcId,srcPort,dstComp,dstId,dstPort,outLat=None
 
   linkName = "%s%d:%d->%d:%d" % (linkType,srcId,srcPort,dstId,dstPort)
   link = sst.Link(linkName)
-  portName = "output %d %d" % (srcPort, dstPort)
+  portName = "output%d" % (srcPort)
   srcComp.addLink(link,portName,outLat)
-  portName = "input %d %d" % (srcPort, dstPort)
+  portName = "input%d" % (dstPort)
   dstComp.addLink(link,portName,inLat)
 
 def makeBiLink(linkType,comp1,id1,port1,comp2,id2,port2,outLat=None,inLat=None):
@@ -180,6 +180,8 @@ class Interconnect:
         makeUniNetworkLink(srcSwitch,srcId,srcOutport,
                            dstSwitch,dstId,dstInport,
                            lat)
+      for j in range(0,21):
+        srcSwitch.setSubComponent("outport%d" % j, "macro.SnapprOutPort")
 
   def connectEndpoints(self):
     lat = ""
@@ -199,6 +201,7 @@ class Interconnect:
         ejSwitchComp, params = self.switches[swId]
         makeUniLink("ejection",ejSwitchComp,swId,switchPort,ep,epId,ejPort,
                     outLat=lat,inLat=smallLatency)
+        ep.setSubComponent("outport0", "macro.SnapprOutPort")
 
   def buildLogPNetwork(self):
     import re
@@ -220,9 +223,9 @@ class Interconnect:
       sw = switches[injSW]
       linkName = "logPinjection%d->%d" % (i, injSW)
       link = sst.Link(linkName)
-      portName = "output %d %d" % (sst.macro.NICLogPInjectionPort, i)
+      portName = "output%d" % (sst.macro.NICLogPInjectionPort)
       ep.addLink(link, portName, smallLatency) #put no latency here
-      portName = "input %d %d" % (sst.macro.NICLogPInjectionPort, i)
+      portName = "input%d" % (i)
       sw.addLink(link, portName, smallLatency)
 
     for i in range(self.num_nodes):
@@ -231,9 +234,9 @@ class Interconnect:
         linkName = "logPejection%d->%d" % (i, injSW)
         link = sst.Link(linkName)
         sw = switches[p]
-        portName = "output %d %d" % (i, sst.macro.NICLogPInjectionPort)
+        portName = "output%d" % (i)
         sw.addLink(link, portName, lat)
-        portName = "input %d %d" % (i, sst.macro.NICLogPInjectionPort)
+        portName = "input%d" % (sst.macro.NICLogPInjectionPort)
         ep.addLink(link, portName, lat)
 
   def buildFull(self, epFxn):
@@ -314,6 +317,7 @@ def setupDeprecatedParams(params, debugList=[]):
 
 def setupDeprecated():
   import sys
+  print("setupDeprecated ", 1)
   sst.setProgramOption("timebase", "100as")
   params = readCmdLineParams()
   debugList = []

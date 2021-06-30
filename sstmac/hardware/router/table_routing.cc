@@ -59,6 +59,10 @@ namespace hw {
 
 class TableRouter : public Router {
  private:
+  struct header : public Packet::Header {
+    uint8_t num_hops;
+  };
+
   struct Port {
     Port(const nlohmann::json& pch) :
       rotater(0)
@@ -97,26 +101,26 @@ class TableRouter : public Router {
 
   TableRouter(SST::Params& params, Topology* top, NetworkSwitch* sw) :
     Router(params, top, sw),
-    table_(top->numNodes())
+    table_(top->numNodes()),
+    num_vcs_(1)
   {
-    std::string fname = params.find<std::string>("filename");
-    std::ifstream in(fname);
-    nlohmann::json jsn;
-    in >> jsn;
-    FileTopology* file_topo = dynamic_cast<FileTopology*>(top);
 
-    std::string myName = top->switchIdToName(my_addr_);
-    nlohmann::json routes =
-        jsn.at("switches").at(myName).at("routes");
+    FileTopology* file_topo = dynamic_cast<FileTopology*>(top);
     nlohmann::json port_channels;
     if (file_topo){
-      nlohmann::json switch_ports = file_topo->getSwitchJson(myName);
-      auto pch_it = switch_ports.find("port_channels");
-      if (pch_it != switch_ports.end()){
-        port_channels = *pch_it;
+      try {
+        nlohmann::json switch_ports = file_topo->getSwitchJson(my_addr_);
+        auto pch_it = switch_ports.find("port_channels");
+        if (pch_it != switch_ports.end()){
+          port_channels = *pch_it;
+        }
+      } catch (nlohmann::detail::exception& e) {
+        spkt_abort_printf("failed getting switch JSON info in TableRouter for switch %d",
+                          int(addr()));
       }
     }
 
+    nlohmann::json routes = top->getRoutingTable(my_addr_);
     for (auto it = routes.begin(); it != routes.end(); ++it){
       NodeId dest_nid = top->nodeNameToId(it.key());
       if (it.value().is_number()){
@@ -137,10 +141,15 @@ class TableRouter : public Router {
       }
     }
 
+    increment_vcs_ = params.find<bool>("increment_vcs", false);
+    if (increment_vcs_){
+      num_vcs_ = params.find<int>("num_vcs");
+    }
+
   }
 
   int numVC() const override {
-    return 1;
+    return num_vcs_;
   }
 
   std::string toString() const override {
@@ -150,13 +159,23 @@ class TableRouter : public Router {
   void route(Packet *pkt) override {
     int port = table_[pkt->toaddr()].nextPort();
     pkt->setEdgeOutport(port);
-    //for now only valid on topologies with minimal/no vcs
-    pkt->setDeadlockVC(0);
-    rter_debug("packet to %d sent to port %d", pkt->toaddr(), port);
+
+    auto* hdr = pkt->rtrHeader<header>();
+    if (increment_vcs_){
+      pkt->setDeadlockVC(hdr->num_hops);
+      hdr->num_hops++;
+    } else {
+      //for only valid on topologies with minimal/no vcs
+      pkt->setDeadlockVC(0);
+    }
+    rter_debug("packet to %d sent to port %d:%d",
+               pkt->toaddr(), port, pkt->deadlockVC());
   }
 
  private:
   std::vector<Port> table_;
+  bool increment_vcs_;
+  int num_vcs_;
 };
 
 }

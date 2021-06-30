@@ -85,7 +85,8 @@ class SimpleNode :
     {"xmit_stall", "congestion stalls", "cycles", 1},
     {"xmit_active", "activity statistic", "cycles", 1}, // Name, Desc, Units, Enable Level
     {"xmit_idle", "idle statistic", "cycles", 1}, // Name, Desc, Units, Enable Level
-    {"bytes_sent", "data sent on port", "bytes", 1}
+    {"bytes_sent", "data sent on port", "bytes", 1},
+    {"traffic_intensity", "Count the traffic on a port", "unit of traffic", 1}
   )
 
   SimpleNode(uint32_t id, SST::Params& params);

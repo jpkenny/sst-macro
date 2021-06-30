@@ -186,7 +186,7 @@ namespace sstmac {
 
 class SharedBaseComponent {
  public:
-  uint32_t componentId() const {
+  SST::ComponentId_t componentId() const {
     return id_;
   }
 
@@ -199,7 +199,7 @@ class SharedBaseComponent {
   }
 
  protected:
-  SharedBaseComponent(uint32_t id) :
+  SharedBaseComponent(SST::ComponentId_t id) :
     id_(id),
     thread_id_(0),
     nthread_(1)
@@ -232,17 +232,20 @@ class IntegratedBaseComponent :
 
   template <class T, class... Args> T* loadSub(const std::string& name, const std::string& iface, int slot_id,
                                                SST::Params& params, Args&&... args){
-    auto* sub = Base::template loadAnonymousSubComponent<T>("macro." + name + "_" + iface, iface, slot_id,
-                                          SST::ComponentInfo::SHARE_PORTS | SST::ComponentInfo::SHARE_STATS,
-                                          params, std::forward<Args>(args)...);
+    auto* sub = Base::template loadUserSubComponent<T>(name, SST::ComponentInfo::SHARE_NONE, std::forward<Args>(args)...);
+    if (!sub){
+      sub = Base::template loadAnonymousSubComponent<T>("macro." + name + "_" + iface, iface, slot_id,
+                                            SST::ComponentInfo::SHARE_PORTS | SST::ComponentInfo::SHARE_STATS,
+                                            params, std::forward<Args>(args)...);
+    }
     return dynamic_cast<T*>(sub);
   }
 
   template <class T, class... Args> T* newSub(const std::string& name, int slot_id,
                                SST::Params& params, Args&&... args){
     auto* sub = Base::template loadAnonymousSubComponent<T>("macro." + name, name, slot_id,
-                                          SST::ComponentInfo::SHARE_PORTS | SST::ComponentInfo::SHARE_STATS,
-                                          params, std::forward<Args>(args)...);
+                                            SST::ComponentInfo::SHARE_PORTS | SST::ComponentInfo::SHARE_STATS,
+                                            params, std::forward<Args>(args)...);
     return dynamic_cast<T*>(sub);
   }
 
@@ -284,7 +287,7 @@ class IntegratedBaseComponent :
   }
 
 protected:
- IntegratedBaseComponent(const std::string& selfname, uint32_t id) :
+ IntegratedBaseComponent(const std::string& selfname, SST::ComponentId_t id) :
    Base(id),
    SharedBaseComponent(id)
  {
@@ -308,45 +311,8 @@ protected:
 class IntegratedComponent
   : public IntegratedBaseComponent<SST::Component>
 {
- public:
-  /**
-   * @brief connectInput All of these classes should implement the
-   *        Connectable interface
-   * @param src_outport
-   * @param dst_inport
-   * @param mod
-   */
-  virtual void connectInput(int src_outport, int dst_inport, EventLinkPtr&& link) = 0;
-
-  /**
-   * @brief connectOutput  All of these classes should implement
-   *                        the Connectable interface
-   * @param src_outport
-   * @param dst_inport
-   * @param mod
-   */
-  virtual void connectOutput(int src_outport, int dst_inport, EventLinkPtr&& link) = 0;
-
-  /**
-   * @brief payloadHandler
-   * @param port
-   * @return The handler that will receive payloads from an SST link
-   */
-  virtual SST::Event::HandlerBase* payloadHandler(int port) = 0;
-
-  /**
-   * @brief creditHandler
-   * @param port
-   * @return The handler that will receive credits from an SST link
-   */
-  virtual SST::Event::HandlerBase* creditHandler(int port) = 0;
-
-  void initLinks(SST::Params& params);
-
  protected:
-  IntegratedComponent(uint32_t id);
-
-  SST::LinkMap* link_map_;
+  IntegratedComponent(SST::ComponentId_t id);
 
 };
 
@@ -409,8 +375,6 @@ class MacroBaseComponent
 
   void endSimulation();
 
-  void initLinks(SST::Params&){} //need for SST core compatibility
-
   template <class T, class... Args> T* loadSub(const std::string& name, const std::string& /*iface*/, int slot_id,
                                 SST::Params& params, Args&&... args){
     return sprockit::create<T>("macro", name, componentId(), params, std::forward<Args>(args)...);
@@ -422,7 +386,7 @@ class MacroBaseComponent
   }
 
  public:
-  uint32_t componentId() const {
+  SST::ComponentId_t componentId() const {
     return id_;
   }
 
@@ -461,7 +425,7 @@ class MacroBaseComponent
  protected:
   //friend int ::sstmac::run_standalone(int, char**);
 
-  MacroBaseComponent(const std::string& /*selfname*/, uint32_t id) :
+  MacroBaseComponent(const std::string& /*selfname*/, SST::ComponentId_t id) :
     mgr_(nullptr), 
     seqnum_(0), 
     selfLinkId_(EventLink::allocateSelfLinkId()),
@@ -474,7 +438,7 @@ class MacroBaseComponent
     setManager();
   }
 
-  MacroBaseComponent(uint32_t id)
+  MacroBaseComponent(SST::ComponentId_t id)
     : MacroBaseComponent("self", id)
   {
   }
@@ -493,7 +457,7 @@ class MacroBaseComponent
   void setManager();
 
  private:
-  uint32_t id_;
+  SST::ComponentId_t id_;
   int thread_id_;
   int nthread_;
 
@@ -518,7 +482,7 @@ class Component : public ComponentParent
   void init(unsigned int phase) override; 
 
  protected:
-  Component(uint32_t cid, SST::Params& /*params*/) :
+  Component(SST::ComponentId_t cid, SST::Params& /*params*/) :
    ComponentParent(cid)
   {
   }
@@ -534,7 +498,7 @@ class SubComponent : public SubComponentParent
   void init(unsigned int phase) override; 
 
  protected:
-  SubComponent(uint32_t id, const std::string& selfname, SST::Component* /*parent*/) :
+  SubComponent(SST::ComponentId_t id, const std::string& selfname, SST::Component* /*parent*/) :
     SubComponentParent(selfname, id)
   {
   }

@@ -35,10 +35,11 @@ endif
 PYRUNTEST = $(top_builddir)/tests/runtest
 PYVALIDATE = $(top_builddir)/tests/checktest
 
-NOOP = $(top_srcdir)/tests/noop
+NOOP = $(top_builddir)/tests/noop
 DIFF=diff -u
 if INTEGRATED_SST_CORE
 SSTMACEXEC = $(top_builddir)/bin/sstmac-check
+SSTPYTHON = @sst_prefix@/bin/sst
 else
 SSTMACEXEC = $(top_builddir)/bin/sstmac
 endif
@@ -58,7 +59,8 @@ EXTRA_DIST = \
   runtest \
   checktest \
   checkdiff \
-  noop
+  noop \
+  testsuite_default_sst_macro.py
 
 
 CORE_LIBS = ../sstmac/install/libsstmac.la ../sprockit/sprockit/libsprockit.la
@@ -97,7 +99,7 @@ CHECK_TESTS = \
   $(COVERAGETESTS) \
   $(ALLOCTESTS) \
   $(SINGLETESTS) \
-  $(UNITTESTS) 
+  $(UNITTESTS)
 
 if USE_REPLACEMENT_HEADERS
 CHECK_TESTS += $(EXTERNALTESTS)
@@ -108,13 +110,13 @@ INSTALLCHECK_TESTS = \
   $(TUTORIALTESTS)
 
 if INTEGRATED_SST_CORE
-INSTALLCHECK_TESTS += $(APITESTS) 
+INSTALLCHECK_TESTS += $(APITESTS)
 else
 CHECK_TESTS += $(APITESTS)
 endif
 
 
-print-tests: 
+print-tests:
 	echo $(CHECK_TESTS)
 
 check-local: $(CHECK_TESTS:%=%.$(CHKSUF))
@@ -129,7 +131,7 @@ installcheck-local: $(INSTALLCHECK_TESTS:%=%.$(CHKSUF))
 #  Clean                                                                                {{{#
 #------------------------------------------------------------------------------------------#
 
-clean-local: clean-skeletons 
+clean-local: clean-skeletons
 	rm -f *.$(CHKSUF)
 	rm -f *.tmp-out
 	rm -f net.dot
